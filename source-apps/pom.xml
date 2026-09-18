@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================
+  制造业数据平台 —— 源系统多模块工程（父 POM）
+
+  设计要点:
+    1. 10 个系统（MDM + 9 业务系统）为 Maven 模块，但**单进程启动**
+       — 由 bootstrap 模块的 main() 一次性拉起全部，端口 8080
+       — 各系统靠 URL 前缀隔离: /api/mdm/**、/api/erp/** ...
+    2. shared 模块承载跨系统能力: 统一响应、权限、审批引擎、主数据消费
+    3. Java 17 + Spring Boot 3.2.0（与本机 .m2 仓库已有版本一致）
+
+  构建:
+    mvn -pl bootstrap -am spring-boot:run      启动
+    mvn clean package -DskipTests              打包
+  ============================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.mfg</groupId>
+    <artifactId>mfg-source-apps</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>制造业数据平台</name>
+    <description>统一主数据平台 + 9 类业务系统（单进程多模块）</description>
+
+    <!-- ============================================================
+         模块声明
+         ============================================================ -->
+    <modules>
+        <!-- 公共能力 -->
+        <module>shared/common</module>
+        <module>shared/security</module>
+        <module>shared/workflow</module>
+        <module>shared/masterdata</module>
+
+        <!-- 第 10 个系统：统一主数据管理平台 -->
+        <module>mdm</module>
+
+        <!-- 9 类业务系统 -->
+        <module>crm</module>
+        <module>erp</module>
+        <module>mes</module>
+        <module>wms</module>
+        <module>eam</module>
+        <module>qms</module>
+        <module>srm</module>
+        <module>plm</module>
+        <module>energy</module>
+
+        <!-- 启动模块（唯二的可执行模块之一） -->
+        <module>bootstrap</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- 依赖版本统一管理（与本机 .m2 仓库已缓存版本对齐） -->
+        <revision>1.0.0</revision>
+        <springdoc.version>2.3.0</springdoc.version>
+        <jjwt.version>0.12.3</jjwt.version>
+        <flyway.version>10.0.0</flyway.version>
+    </properties>
+
+    <!-- ============================================================
+         依赖管理：各子模块统一版本
+         ============================================================ -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- 本项目内部模块 -->
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>shared-common</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>shared-security</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>shared-workflow</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>shared-masterdata</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- 9 个业务系统 + MDM -->
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-mdm</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-crm</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-erp</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-mes</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-wms</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-eam</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-qms</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-srm</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-plm</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.mfg</groupId>
+                <artifactId>app-energy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- 三方依赖 -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ============================================================
+         所有模块共用的依赖
+         ============================================================ -->
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

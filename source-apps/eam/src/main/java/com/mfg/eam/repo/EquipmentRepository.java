@@ -1,0 +1,1 @@
+package com.mfg.eam.repo;import com.mfg.eam.entity.Equipment;import org.springframework.data.jpa.repository.JpaRepository;import java.util.Optional;public interface EquipmentRepository extends JpaRepository<Equipment,Long>{boolean existsByEquipmentCode(String code);Optional<Equipment> findByEquipmentCode(String code);}

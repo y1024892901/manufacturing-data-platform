@@ -1,0 +1,1 @@
+package com.mfg.crm.repo;import com.mfg.crm.entity.Opportunity;import org.springframework.data.jpa.repository.JpaRepository;public interface OpportunityRepository extends JpaRepository<Opportunity,Long>{boolean existsByOpportunityNo(String no);}

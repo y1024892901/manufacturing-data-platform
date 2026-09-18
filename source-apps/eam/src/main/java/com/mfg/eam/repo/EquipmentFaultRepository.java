@@ -1,0 +1,1 @@
+package com.mfg.eam.repo;import com.mfg.eam.entity.EquipmentFault;import org.springframework.data.jpa.repository.JpaRepository;public interface EquipmentFaultRepository extends JpaRepository<EquipmentFault,Long>{boolean existsByFaultNo(String no);}

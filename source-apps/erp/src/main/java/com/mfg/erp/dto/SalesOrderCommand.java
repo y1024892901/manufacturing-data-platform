@@ -1,0 +1,2 @@
+package com.mfg.erp.dto;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.time.LocalDate;import java.util.List;
+public record SalesOrderCommand(@NotBlank String salesOrderNo,@NotBlank String customerCode,@NotNull LocalDate deliveryDate,String sourceOpportunityNo,String remark,@NotEmpty List<Line> lines){public record Line(@NotNull Integer lineNo,@NotBlank String materialCode,@DecimalMin("0.0001") BigDecimal orderQty,@DecimalMin("0") BigDecimal unitPrice,String unitCode){}}

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mfg</groupId>
+        <artifactId>mfg-source-apps</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>app-bootstrap</artifactId>
+    <name>启动模块</name>
+    <description>单进程启动全部 10 个系统（端口 8080）</description>
+
+    <properties>
+        <start-class>com.mfg.bootstrap.MfgSourceApplication</start-class>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-mdm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-crm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-erp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-mes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-wms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-eam</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-qms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-srm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-plm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-energy</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 本项目唯一可执行模块：mvn spring-boot:run 与 java -jar 都靠它 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.mfg.bootstrap.MfgSourceApplication</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

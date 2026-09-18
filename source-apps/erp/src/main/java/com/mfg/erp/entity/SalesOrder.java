@@ -1,0 +1,5 @@
+package com.mfg.erp.entity;
+import jakarta.persistence.*;import lombok.*;import java.math.BigDecimal;import java.time.*;
+/** ERP 销售订单：确认后才是计划、生产、发运的需求来源。 */
+@Entity @Table(name="erp_sales_order",catalog="src_erp") @Getter @Setter @NoArgsConstructor public class SalesOrder{
+ @Id @GeneratedValue(strategy=GenerationType.IDENTITY)private Long id;@Column(name="sales_order_no")private String salesOrderNo;@Column(name="customer_code")private String customerCode;@Column(name="customer_name")private String customerName;@Column(name="order_date")private LocalDate orderDate;@Column(name="delivery_date")private LocalDate deliveryDate;@Column(name="total_amount")private BigDecimal totalAmount;@Column(name="tax_amount")private BigDecimal taxAmount;@Column(name="currency")private String currency="CNY";@Column(name="order_status")private String status="DRAFT";@Column(name="source_opportunity_no")private String sourceOpportunityNo;@Column(name="sales_user")private String salesUser;@Column(name="dept_code")private String deptCode;@Column(name="remark")private String remark;}

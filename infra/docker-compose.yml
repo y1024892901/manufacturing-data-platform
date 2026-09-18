@@ -1,0 +1,89 @@
+# ============================================================
+# 制造业生产数据分析平台 —— 服务编排
+#
+# ⚠️ 重要变更（相对早期设计）
+#
+#   早期设计用 PostgreSQL 16 + pgvector + Docker Compose 承载全部数据层。
+#   实际落地时改为：**数据库使用本机 MySQL 8.0.43（D:\mysql8，端口 3306）**
+#
+#   因此本文件:
+#     ✗ 不再包含 postgres / pgvector 服务
+#     ✗ 不再挂载 db-init（数据库已在本机初始化完成，见 db-init/README.md）
+#     ✓ 只容器化「不便在 Windows 原生运行的 Python 服务」
+#
+#   MySQL 的启停请用:  infra\mysql8\start-mysql8.bat / stop-mysql8.bat
+#
+# ============================================================
+
+services:
+  # ---------- 工作流编排（Dagster 在 Windows 原生运行较麻烦，故容器化）----------
+  # 提供资产编排、数据血缘图、运行历史
+  dagster:
+    build:
+      context: ..
+      dockerfile: infra/dockerfiles/dagster.Dockerfile
+    container_name: mfg-dagster
+    environment:
+      DAGSTER_HOME: /opt/dagster/home
+      # 连接宿主机的 MySQL 8（Docker Desktop 下用 host.docker.internal）
+      MYSQL_HOST: host.docker.internal
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../orchestration:/opt/dagster/app
+      - ../transforms:/opt/dagster/transforms
+      - ./configs/dagster.yaml:/opt/dagster/home/dagster.yaml:ro
+    ports:
+      - "${DAGSTER_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  # ---------- Python 侧服务：数仓网关 + MCP Server ----------
+  # 注意: Java 的 10 个源系统不在此处，它们作为本地进程运行
+  #       （见 source-apps/README.md，用 mvn spring-boot:run 启动）
+  api:
+    build:
+      context: ..
+      dockerfile: infra/dockerfiles/api.Dockerfile
+    container_name: mfg-api
+    environment:
+      MYSQL_HOST: host.docker.internal
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      DW_ODS_DB: ${DW_ODS_DB:-mfg_ods}
+      DW_DWD_DB: ${DW_DWD_DB:-mfg_dwd}
+      DW_DWS_DB: ${DW_DWS_DB:-mfg_dws}
+      DW_ADS_DB: ${DW_ADS_DB:-mfg_ads}
+      APP_DB: ${APP_DB:-mfg_app}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      LLM_PRIMARY: ${LLM_PRIMARY:-deepseek}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "${MCP_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+# ============================================================
+# 说明：以下服务刻意「不」容器化
+#
+#   MySQL 8.0.43    本机 D:\mysql8，端口 3306
+#                   容器化会与已有本地实例冲突，且数据文件难以用 Navicat 查看
+#
+#   10 个源系统      Java Spring Boot 单进程，端口 8080
+#                   本机运行便于 IDE 调试，且用户要求数据落在 D 盘
+#                   启动: cd source-apps && mvn spring-boot:run
+#
+#   报表/后台前端     Vite dev server，端口 5173/5174/5175
+#                   npm run dev 即可，无需容器
+# ============================================================

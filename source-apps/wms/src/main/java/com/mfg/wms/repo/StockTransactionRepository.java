@@ -1,0 +1,1 @@
+package com.mfg.wms.repo;import com.mfg.wms.entity.StockTransaction;import org.springframework.data.jpa.repository.JpaRepository;public interface StockTransactionRepository extends JpaRepository<StockTransaction,Long>{boolean existsByTxnNo(String no);}

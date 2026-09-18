@@ -1,0 +1,1 @@
+<script setup lang="ts">defineProps<{code:string}>();const names:Record<string,string>={crm:'客户关系 CRM',erp:'企业资源 ERP',plm:'产品生命周期 PLM',srm:'供应链 SRM',wms:'仓储 WMS',mes:'制造执行 MES',qms:'质量 QMS',eam:'设备 EAM',energy:'能源管理 EMS'}</script><template><el-result icon="info" :title="names[code]||code" sub-title="该模块的真实单据、台账与分析页面正在按 P2-P4 逐项接入。当前门户、统一身份、权限和审批入口已经可用。"/></template>

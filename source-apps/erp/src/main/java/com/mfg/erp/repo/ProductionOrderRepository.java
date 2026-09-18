@@ -1,0 +1,1 @@
+package com.mfg.erp.repo;import com.mfg.erp.entity.ProductionOrder;import org.springframework.data.jpa.repository.JpaRepository;public interface ProductionOrderRepository extends JpaRepository<ProductionOrder,Long>{boolean existsByProdOrderNo(String no);}

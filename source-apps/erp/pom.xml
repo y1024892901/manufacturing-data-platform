@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mfg</groupId>
+        <artifactId>mfg-source-apps</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>app-erp</artifactId>
+    <name>企业资源计划</name>
+    <description>销售订单、生产订单、财务凭证、应收</description>
+
+    <dependencies>
+        <!-- ERP 消费 MDM 已发布的客户、物料；不在 ERP 中维护其权威副本。 -->
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-mdm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-workflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-masterdata</artifactId>
+        </dependency>
+    </dependencies>
+</project>

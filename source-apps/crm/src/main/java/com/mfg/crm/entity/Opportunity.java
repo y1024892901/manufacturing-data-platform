@@ -1,0 +1,5 @@
+package com.mfg.crm.entity;
+import jakarta.persistence.*;import lombok.*;import java.math.BigDecimal;import java.time.*;
+/** CRM 的商机，不是 ERP 订单；赢单后才可转化。 */
+@Entity @Table(name="crm_opportunity",catalog="src_crm") @Getter @Setter @NoArgsConstructor public class Opportunity{
+ @Id @GeneratedValue(strategy=GenerationType.IDENTITY)private Long id;@Column(name="opportunity_no")private String opportunityNo;@Column(name="opportunity_name")private String opportunityName;@Column(name="customer_code")private String customerCode;@Column(name="customer_name")private String customerName;@Column(name="expect_amount")private BigDecimal expectAmount;@Column(name="expect_sign_date")private LocalDate expectSignDate;@Column(name="stage_code")private String stageCode="LEAD";@Column(name="win_rate")private BigDecimal winRate;@Column(name="converted_order_no")private String convertedOrderNo;@Column(name="converted_at")private LocalDateTime convertedAt;@Column(name="owner_user")private String ownerUser;@Column(name="owner_name")private String ownerName;@Column(name="dept_code")private String deptCode;@Column(name="remark")private String remark;}

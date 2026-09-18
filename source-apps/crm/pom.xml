@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mfg</groupId>
+        <artifactId>mfg-source-apps</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>app-crm</artifactId>
+    <name>客户关系管理</name>
+    <description>客户（只读副本）、商机、跟进</description>
+
+    <dependencies>
+        <!-- CRM 只读引用 MDM 的权威客户实体与发布校验，不拥有客户主数据。 -->
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>app-mdm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-workflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mfg</groupId>
+            <artifactId>shared-masterdata</artifactId>
+        </dependency>
+    </dependencies>
+</project>

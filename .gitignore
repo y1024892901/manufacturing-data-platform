@@ -1,0 +1,67 @@
+# ===== 密钥（绝不入库）=====
+.env
+*.key
+*.pem
+secrets/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ===== Node =====
+node_modules/
+dist/
+.vite/
+*.local
+
+# ===== Java / Maven =====
+target/
+
+# ===== dbt =====
+transforms/target/
+transforms/dbt_packages/
+transforms/logs/
+transforms/.user.yml
+
+# ===== Dagster =====
+.dagster/
+dagster_home/
+
+# ===== 运行时数据（保留目录结构，排除内容）=====
+data/snapshots/*
+data/exports/*
+data/parquet/*
+data/tmp/*
+!data/snapshots/.gitkeep
+!data/exports/.gitkeep
+!data/parquet/.gitkeep
+!data/tmp/.gitkeep
+# data/samples/ 保留 —— 用于测试与文档示例
+
+# ===== 模型产物 =====
+models/registry/*/*/
+!models/registry/README.md
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 临时 =====
+tmp/
+*.tmp
+~$*

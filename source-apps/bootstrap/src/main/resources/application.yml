@@ -1,0 +1,110 @@
+# ============================================================
+# 源系统应用配置（单进程，端口 8080）
+#
+# 数据库: 本机 MySQL 8.0.43 (D:\mysql8)，18 个库统一承载
+#   源系统库 src_*  : MDM 与 9 类业务系统
+#   平台库  mfg_*   : 权限(mfg_auth)、元数据(mfg_meta)、运维(mfg_ops)
+#
+# ⚠️ 密钥说明
+#   MYSQL_PASSWORD / JWT_SECRET 均**不设默认值**，必须由环境变量注入。
+#   启动方式见 source-apps/run.bat（它会读取 infra\.env 后拉起应用）。
+#   这样可确保口令不落入任何受版本控制的文件。
+# ============================================================
+
+server:
+  port: ${SOURCE_API_PORT:8080}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  tomcat:
+    max-connections: 200
+    threads:
+      max: 50
+
+spring:
+  application:
+    name: mfg-source-apps
+
+  # ---------- 主数据源：权限与元数据库 ----------
+  # 各业务系统的库通过多数据源切换（见 shared/common 的 DataSourceConfig）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 注意 characterEncoding 必须写 Java 字符集名 "UTF-8"，不能写 MySQL 的 "utf8mb4"，
+    # 否则 Connector/J 会抛 Unsupported character encoding。
+    # 服务端实际存储仍由库表默认的 utf8mb4 决定，不受此处影响。
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/mfg_auth?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${MYSQL_USER:root}
+    # 无默认值：必须由环境变量提供，缺失时应用启动即失败（好过用错口令连错库）
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      pool-name: MfgPool
+
+  # ---------- JPA ----------
+  jpa:
+    # 表结构已由 infra/db-init/*.sql 建好，禁止 Hibernate 自动改结构
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 50
+          time_zone: Asia/Shanghai
+        physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+
+  # ---------- JSON ----------
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+# ---------- 本项目配置 ----------
+mfg:
+  jwt:
+    # 无默认值：由环境变量注入
+    secret: ${JWT_SECRET}
+    expire-minutes: 480        # 8 小时，避免演示中途掉登录
+    header: Authorization
+    prefix: "Bearer "
+    issuer: mfg-source-apps
+
+  demo-mode: ${DEMO_MODE:true}
+
+# ---------- 接口文档 ----------
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+  default-produces-media-type: application/json
+
+# ---------- 日志 ----------
+logging:
+  level:
+    root: INFO
+    com.mfg: ${LOG_LEVEL:INFO}
+    com.mfg.security.scope: INFO
+    org.hibernate.SQL: WARN
+    com.zaxxer.hikari: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

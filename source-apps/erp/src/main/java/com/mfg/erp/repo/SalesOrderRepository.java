@@ -1,0 +1,1 @@
+package com.mfg.erp.repo;import com.mfg.erp.entity.SalesOrder;import org.springframework.data.jpa.repository.JpaRepository;public interface SalesOrderRepository extends JpaRepository<SalesOrder,Long>{boolean existsBySalesOrderNo(String no);}
