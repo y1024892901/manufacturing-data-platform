@@ -1,0 +1,1 @@
+package com.mfg.crm.repo;import com.mfg.crm.entity.OpportunityFollow;import org.springframework.data.jpa.repository.JpaRepository;import java.util.List;public interface OpportunityFollowRepository extends JpaRepository<OpportunityFollow,Long>{List<OpportunityFollow> findByOpportunityNoOrderByFollowAtDesc(String no);}

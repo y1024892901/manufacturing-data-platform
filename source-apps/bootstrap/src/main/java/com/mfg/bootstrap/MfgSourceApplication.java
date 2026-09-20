@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.CodeSource;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -47,13 +49,16 @@ public class MfgSourceApplication {
      *
      * <p>Spring Boot 不会自动解析 .env；此前只有 run.bat 会把
      * infra/.env 注入进程环境，导致 IDEA 直接运行时容易使用过期密码。
-     * 本方法向上寻找项目根目录的 infra/.env，并把尚未在 IDEA 运行配置中
-     * 显式设置的键写入 JVM 系统属性。该文件已被 Git 忽略，不会进入源码库。</p>
+     * 本方法从工作目录和编译输出目录两条路径寻找项目根目录的 infra/.env，
+     * 并把其中的本地配置写入 JVM 系统属性。系统属性优先于 IDEA 运行配置里的
+     * 同名环境变量，因此不会被遗留的 MYSQL_PASSWORD 覆盖。该文件已被 Git
+     * 忽略，不会进入源码库。</p>
      */
     private static void loadLocalEnv() {
-        Path cursor = Path.of("").toAbsolutePath();
-        while (cursor != null) {
-            Path envFile = cursor.resolve("infra").resolve(".env");
+        for (Path start : findEnvSearchStarts()) {
+            Path cursor = start;
+            while (cursor != null) {
+                Path envFile = cursor.resolve("infra").resolve(".env");
             if (Files.isRegularFile(envFile)) {
                 try {
                     List<String> lines = Files.readAllLines(envFile);
@@ -68,9 +73,14 @@ public class MfgSourceApplication {
                         }
                         String key = trimmed.substring(0, separator).trim();
                         String value = trimmed.substring(separator + 1);
-                        // IDEA Run Configuration 中手工配置的值优先，便于切换环境。
-                        if (System.getenv(key) == null && System.getProperty(key) == null) {
-                            System.setProperty(key, value);
+                        // .env 是本地演示环境的唯一事实来源。System Property 优先级
+                        // 高于 IDEA Run Configuration 的 Environment Variables，可屏蔽遗留口令。
+                        System.setProperty(key, value);
+                        if ("MYSQL_PASSWORD".equals(key)) {
+                            System.setProperty("spring.datasource.password", value);
+                        }
+                        if ("JWT_SECRET".equals(key)) {
+                            System.setProperty("mfg.jwt.secret", value);
                         }
                     }
                     log.info("已加载本地环境文件: {}", envFile);
@@ -81,7 +91,22 @@ public class MfgSourceApplication {
             }
             cursor = cursor.getParent();
         }
+        }
         log.warn("未发现 infra/.env；请在 IDEA Run Configuration 配置 MYSQL_PASSWORD 与 JWT_SECRET");
+    }
+
+    private static List<Path> findEnvSearchStarts() {
+        List<Path> starts = new ArrayList<>();
+        starts.add(Path.of("").toAbsolutePath());
+        try {
+            CodeSource codeSource = MfgSourceApplication.class.getProtectionDomain().getCodeSource();
+            if (codeSource != null) {
+                starts.add(Path.of(codeSource.getLocation().toURI()).toAbsolutePath());
+            }
+        } catch (Exception ignored) {
+            // 工作目录仍可作为正常回退路径。
+        }
+        return starts;
     }
 
     private static void printStartupBanner(Environment env) {

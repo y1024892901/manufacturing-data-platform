@@ -1,0 +1,25 @@
+export interface SystemEntry {
+  code: string
+  name: string
+  shortName: string
+  route: string
+  accent: string
+  description: string
+  capabilities: string[]
+  menus: { label: string; route: string }[]
+}
+
+export const systems: SystemEntry[] = [
+  { code:'mdm', name:'统一主数据管理', shortName:'MDM', route:'/mdm/dashboard', accent:'#2563eb', description:'客户、供应商、物料、BOM与组织主数据的唯一权威入口', capabilities:['主数据治理','审批发布','分发对账'], menus:[{label:'系统首页',route:'/mdm/dashboard'},{label:'物料主数据',route:'/mdm/materials'},{label:'BOM版本',route:'/mdm/boms'},{label:'客户主数据',route:'/mdm/customers'},{label:'供应商主数据',route:'/mdm/suppliers'}] },
+  { code:'crm', name:'客户关系管理', shortName:'CRM', route:'/crm/dashboard', accent:'#7c3aed', description:'管理线索、商机、报价、合同、销售预测和客户协同', capabilities:['客户360','商机漏斗','报价合同'], menus:[{label:'系统首页',route:'/crm/dashboard'},{label:'客户360',route:'/crm/customers'},{label:'销售线索',route:'/crm/leads'},{label:'商机管理',route:'/crm/opportunities'},{label:'报价合同',route:'/crm/quotations'}] },
+  { code:'erp', name:'企业资源计划', shortName:'ERP', route:'/erp/dashboard', accent:'#0f766e', description:'承接销售需求，完成计划、订单、财务与经营核算', capabilities:['销售订单','生产计划','财务核算'], menus:[{label:'系统首页',route:'/erp/dashboard'},{label:'销售订单',route:'/erp/sales-orders'},{label:'生产订单',route:'/erp/production-orders'},{label:'MRP计划',route:'/erp/mrp'},{label:'财务凭证',route:'/erp/vouchers'}] },
+  { code:'plm', name:'产品生命周期管理', shortName:'PLM', route:'/plm/dashboard', accent:'#0369a1', description:'管理产品结构、工艺规划、工程变更和受控文档', capabilities:['产品结构','工程变更','文档版本'], menus:[{label:'系统首页',route:'/plm/dashboard'},{label:'产品结构',route:'/plm/products'},{label:'EBOM / MBOM',route:'/plm/boms'},{label:'工程变更',route:'/plm/ecns'},{label:'受控文档',route:'/plm/documents'}] },
+  { code:'srm', name:'供应商关系管理', shortName:'SRM', route:'/srm/dashboard', accent:'#b45309', description:'管理供应商准入、寻源、采购协同、交付和绩效', capabilities:['供应商准入','采购协同','交付绩效'], menus:[{label:'系统首页',route:'/srm/dashboard'},{label:'供应商准入',route:'/srm/onboarding'},{label:'询报价',route:'/srm/rfq'},{label:'采购订单',route:'/srm/purchase-orders'},{label:'到货协同',route:'/srm/deliveries'}] },
+  { code:'wms', name:'仓储管理系统', shortName:'WMS', route:'/wms/dashboard', accent:'#047857', description:'管理收货、待检、上架、批次库存、领料和盘点', capabilities:['库存执行','批次追溯','仓储作业'], menus:[{label:'系统首页',route:'/wms/dashboard'},{label:'仓库库位',route:'/wms/locations'},{label:'库存余额',route:'/wms/inventory'},{label:'出入库流水',route:'/wms/transactions'},{label:'盘点作业',route:'/wms/counting'}] },
+  { code:'mes', name:'制造执行系统', shortName:'MES', route:'/mes/dashboard', accent:'#be123c', description:'执行工单、派工、报工、转序、追溯和车间异常', capabilities:['工单执行','生产追溯','Andon异常'], menus:[{label:'系统首页',route:'/mes/dashboard'},{label:'生产工单',route:'/mes/work-orders'},{label:'派工排产',route:'/mes/dispatch'},{label:'报工明细',route:'/mes/reports'},{label:'Andon异常',route:'/mes/andon'}] },
+  { code:'qms', name:'质量管理系统', shortName:'QMS', route:'/qms/dashboard', accent:'#c2410c', description:'覆盖来料、过程、完工检验与不合格闭环', capabilities:['质量检验','不合格处置','CAPA'], menus:[{label:'系统首页',route:'/qms/dashboard'},{label:'检验标准',route:'/qms/standards'},{label:'质量检验',route:'/qms/inspections'},{label:'不合格品',route:'/qms/defects'},{label:'返工与CAPA',route:'/qms/reworks'}] },
+  { code:'eam', name:'设备资产管理', shortName:'EAM', route:'/eam/dashboard', accent:'#475569', description:'管理设备资产、点检保养、故障、维修和可靠性', capabilities:['设备台账','点检保养','故障维修'], menus:[{label:'系统首页',route:'/eam/dashboard'},{label:'设备台账',route:'/eam/equipments'},{label:'点检计划',route:'/eam/inspections'},{label:'设备故障',route:'/eam/faults'},{label:'维修执行',route:'/eam/repairs'}] },
+  { code:'energy', name:'能源管理系统', shortName:'EMS', route:'/energy/dashboard', accent:'#15803d', description:'管理计量、设备与车间能耗、定额和异常告警', capabilities:['能源计量','能耗分摊','异常预警'], menus:[{label:'系统首页',route:'/energy/dashboard'},{label:'能源仪表',route:'/energy/meters'},{label:'设备能耗',route:'/energy/equipment'},{label:'车间能耗',route:'/energy/workshops'},{label:'能耗告警',route:'/energy/alerts'}] }
+]
+
+export const systemByCode = (code?: string) => systems.find(item => item.code === code)

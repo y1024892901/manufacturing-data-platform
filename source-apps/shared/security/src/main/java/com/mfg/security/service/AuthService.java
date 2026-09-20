@@ -36,6 +36,7 @@ public class AuthService {
     private final SysDeptRepository deptRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final LoginAuditService loginAuditService;
 
     /**
      * 登录。
@@ -44,23 +45,32 @@ public class AuthService {
      * 避免账号枚举。但会记录日志便于排障。
      */
     @Transactional
-    public LoginResponse login(LoginRequest req) {
-        SysUser user = userRepository.findByUsername(req.username())
+    public LoginResponse login(LoginRequest req, String clientIp, String userAgent) {
+        SysUser user = userRepository.findByUsernameAndDeletedFalse(req.username())
                 .orElseThrow(() -> {
                     log.warn("登录失败，账号不存在: {}", req.username());
+                    loginAuditService.failed(req.username(), null, "用户名或密码错误", clientIp, userAgent, false);
                     return BizException.of(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
                 });
 
         if (!Boolean.TRUE.equals(user.getEnabled())) {
+            loginAuditService.failed(user.getUsername(), user.getRealName(), "账号已停用", clientIp, userAgent, false);
             throw BizException.of(ErrorCode.UNAUTHORIZED, "账号已停用，请联系管理员");
+        }
+
+        if (Boolean.TRUE.equals(user.getLocked())) {
+            loginAuditService.failed(user.getUsername(), user.getRealName(), "账号已锁定", clientIp, userAgent, false);
+            throw BizException.of(ErrorCode.UNAUTHORIZED, "账号已锁定，请联系管理员");
         }
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             log.warn("登录失败，密码错误: {}", req.username());
+            loginAuditService.failed(user.getUsername(), user.getRealName(), "用户名或密码错误", clientIp, userAgent, true);
             throw BizException.of(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
 
         user.setLastLoginAt(LocalDateTime.now());
+        user.setFailedLoginCount(0);
 
         List<String> roles = user.getRoles().stream()
                 .map(SysRole::getRoleCode).sorted().toList();
@@ -71,6 +81,7 @@ public class AuthService {
 
         log.info("登录成功: {} ({}) 角色={} 可访问系统={}",
                 user.getRealName(), user.getUsername(), roles, systems);
+        loginAuditService.succeeded(user.getUsername(), user.getRealName(), clientIp, userAgent);
 
         return new LoginResponse(
                 token,

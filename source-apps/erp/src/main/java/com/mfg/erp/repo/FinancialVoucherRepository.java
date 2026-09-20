@@ -1,0 +1,1 @@
+package com.mfg.erp.repo;import com.mfg.erp.entity.FinancialVoucher;import org.springframework.data.jpa.repository.JpaRepository;public interface FinancialVoucherRepository extends JpaRepository<FinancialVoucher,Long>{boolean existsByVoucherNoAndCompanyCodeAndFiscalPeriod(String no,String company,String period);}

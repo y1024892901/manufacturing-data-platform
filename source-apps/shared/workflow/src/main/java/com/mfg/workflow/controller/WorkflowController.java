@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Map;
@@ -43,14 +44,27 @@ public class WorkflowController {
     @Operation(summary = "我的待办", description = "按当前用户持有的角色匹配，返回可直接渲染的待办列表")
     @GetMapping("/tasks/pending")
     @PreAuthorize("hasAuthority('WF:TASK:VIEW')")
-    public ApiResponse<List<PendingTaskView>> pending() {
-        return ApiResponse.ok(queryService.myPending());
+    public ApiResponse<Page<PendingTaskView>> pending(@RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(queryService.myPending(page, size));
     }
 
     @Operation(summary = "待办数量", description = "首页角标用，避免拉全量数据")
     @GetMapping("/tasks/pending/count")
     public ApiResponse<Long> pendingCount() {
         return ApiResponse.ok(engine.myPendingCount());
+    }
+
+    @GetMapping("/tasks/handled")
+    public ApiResponse<Page<Map<String, Object>>> handled(@RequestParam(defaultValue = "1") int page,
+                                                           @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(queryService.myHandled(page, size));
+    }
+
+    @GetMapping("/instances/started")
+    public ApiResponse<Page<WfInstance>> started(@RequestParam(defaultValue = "1") int page,
+                                                  @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(queryService.myStarted(page, size));
     }
 
     // ---------- 审批动作 ----------

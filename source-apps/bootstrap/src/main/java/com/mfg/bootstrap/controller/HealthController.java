@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 健康检查与服务概览。
@@ -50,7 +54,10 @@ public class HealthController {
 
     @Operation(summary = "数据库概览", description = "列出全部 18 个库及其表数量，演示开场用")
     @GetMapping("/databases")
-    public ApiResponse<List<Map<String, Object>>> databases() {
+    public ApiResponse<Page<Map<String, Object>>> databases(@RequestParam(defaultValue = "1") int page,
+                                                            @RequestParam(defaultValue = "20") int size) {
+        int pageIndex = Math.max(0, page - 1);
+        int pageSize = Math.min(100, Math.max(1, size));
         String sql = """
                 SELECT
                     TABLE_SCHEMA AS dbName,
@@ -65,7 +72,14 @@ public class HealthController {
                 WHERE TABLE_SCHEMA LIKE 'src\\_%' OR TABLE_SCHEMA LIKE 'mfg\\_%'
                 GROUP BY TABLE_SCHEMA
                 ORDER BY layer, dbName
+                LIMIT ? OFFSET ?
                 """;
-        return ApiResponse.ok(jdbcTemplate.queryForList(sql));
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, pageSize, pageIndex * pageSize);
+        Long total = jdbcTemplate.queryForObject("""
+                SELECT COUNT(DISTINCT TABLE_SCHEMA)
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA LIKE 'src\\_%' OR TABLE_SCHEMA LIKE 'mfg\\_%'
+                """, Long.class);
+        return ApiResponse.ok(new PageImpl<>(rows, PageRequest.of(pageIndex, pageSize), total == null ? 0 : total));
     }
 }

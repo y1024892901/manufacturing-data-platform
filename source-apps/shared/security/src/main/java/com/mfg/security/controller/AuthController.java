@@ -10,6 +10,7 @@ import com.mfg.security.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,8 +32,11 @@ public class AuthController {
 
     @Operation(summary = "登录", description = "返回 JWT 与用户完整的角色/权限/可访问系统信息")
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
-        return ApiResponse.ok(authService.login(req));
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        String clientIp = forwarded == null || forwarded.isBlank()
+                ? request.getRemoteAddr() : forwarded.split(",")[0].trim();
+        return ApiResponse.ok(authService.login(req, clientIp, request.getHeader("User-Agent")));
     }
 
     @Operation(summary = "演示账号清单", description = "按部门列出全部演示账号，供登录页一键切换身份")

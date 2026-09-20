@@ -1,0 +1,1 @@
+package com.mfg.srm.repo;import com.mfg.srm.entity.SupplierDelivery;import org.springframework.data.jpa.repository.JpaRepository;public interface SupplierDeliveryRepository extends JpaRepository<SupplierDelivery,Long>{boolean existsByDeliveryNo(String no);}

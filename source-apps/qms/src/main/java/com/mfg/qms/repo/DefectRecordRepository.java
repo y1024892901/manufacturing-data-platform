@@ -1,0 +1,1 @@
+package com.mfg.qms.repo;import com.mfg.qms.entity.DefectRecord;import org.springframework.data.jpa.repository.JpaRepository;public interface DefectRecordRepository extends JpaRepository<DefectRecord,Long>{boolean existsByDefectNo(String no);}

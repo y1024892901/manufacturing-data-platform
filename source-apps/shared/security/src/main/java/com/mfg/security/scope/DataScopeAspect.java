@@ -85,6 +85,10 @@ public class DataScopeAspect {
      * 「升职后反而看不到数据」的荒谬情况。
      */
     private ScopeType resolveScope(LoginUser user, String resource) {
+        if (user.getDataScopeType() != null && !"ROLE".equals(user.getDataScopeType())) {
+            try { return ScopeType.valueOf(user.getDataScopeType()); }
+            catch (IllegalArgumentException ex) { return ScopeType.NONE; }
+        }
         if (user.getRoleCodes().isEmpty()) {
             return ScopeType.NONE;
         }

@@ -19,6 +19,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 /**
  * 审批查询服务 —— 把引擎的原始数据组装成前端友好的视图。
@@ -54,6 +57,55 @@ public class WorkflowQueryService {
                 .filter(v -> v != null)
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public Page<PendingTaskView> myPending(int page, int size) {
+        var current = com.mfg.security.config.CurrentUser.get();
+        var pageable = PageRequest.of(safePage(page), safeSize(size));
+        Page<WfTask> tasks = taskRepo.findMyPendingPaged(current.getRoleCodes(), pageable);
+        Map<Long, WfInstance> instances = instanceRepo
+                .findAllById(tasks.getContent().stream().map(WfTask::getInstanceId).distinct().toList())
+                .stream().collect(Collectors.toMap(WfInstance::getId, item -> item));
+        List<PendingTaskView> content = tasks.getContent().stream()
+                .map(task -> toView(task, instances.get(task.getInstanceId())))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        return new PageImpl<>(content, pageable, tasks.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Map<String, Object>> myHandled(int page, int size) {
+        String username = com.mfg.security.config.CurrentUser.get().getUsername();
+        var pageable = PageRequest.of(safePage(page), safeSize(size));
+        Page<WfTask> taskPage = taskRepo.findMyHandled(username, pageable);
+        List<WfTask> tasks = taskPage.getContent();
+        Map<Long, WfInstance> instances = instanceRepo.findAllById(tasks.stream().map(WfTask::getInstanceId).distinct().toList())
+                .stream().collect(Collectors.toMap(WfInstance::getId, item -> item));
+        List<Map<String, Object>> content = tasks.stream().map(task -> {
+            WfInstance instance = instances.get(task.getInstanceId());
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("taskId", task.getId()); row.put("instanceId", task.getInstanceId());
+            row.put("instanceNo", instance == null ? null : instance.getInstanceNo());
+            row.put("bizType", instance == null ? null : instance.getBizType());
+            row.put("bizNo", instance == null ? null : instance.getBizNo());
+            row.put("bizTitle", instance == null ? null : instance.getBizTitle());
+            row.put("nodeName", task.getNodeName()); row.put("result", task.getTaskStatus());
+            row.put("opinion", task.getOpinion()); row.put("finishedAt", task.getFinishedAt());
+            return row;
+        }).toList();
+        return new PageImpl<>(content, pageable, taskPage.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<WfInstance> myStarted(int page, int size) {
+        return instanceRepo.findBySubmitterOrderByIdDesc(
+                com.mfg.security.config.CurrentUser.get().getUsername(),
+                PageRequest.of(safePage(page), safeSize(size)));
+    }
+
+    private int safePage(int page) { return Math.max(0, page - 1); }
+
+    private int safeSize(int size) { return Math.min(200, Math.max(1, size)); }
 
     /**
      * 审批时间轴。

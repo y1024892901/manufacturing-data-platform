@@ -5,4 +5,7 @@ import 'element-plus/dist/index.css'
 import './styles/index.css'
 import App from './App.vue'
 import router from './router'
-createApp(App).use(createPinia()).use(router).use(ElementPlus).mount('#app')
+import { useAuthStore } from './stores/auth'
+const app=createApp(App);const pinia=createPinia();app.use(pinia).use(router).use(ElementPlus)
+useAuthStore(pinia).initCrossTabSync(()=>{ if(router.currentRoute.value.path!=='/login') router.replace('/login') })
+app.mount('#app')

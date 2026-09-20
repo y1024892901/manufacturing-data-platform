@@ -1,7 +1,29 @@
 <script setup lang="ts">
-import { computed,onMounted,ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import http from '../api/http'
-const props=defineProps<{kind:string}>();const rows=ref<any[]>([]);const loading=ref(false)
-const config:any={crm:{title:'CRM 商机',url:'/crm/opportunities',cols:['opportunityNo','opportunityName','customerName','expectAmount','stageCode']},erp:{title:'ERP 销售订单',url:'/erp/sales-orders',cols:['salesOrderNo','customerName','deliveryDate','totalAmount','status']},production:{title:'ERP 生产订单',url:'/erp/production-orders',cols:['prodOrderNo','productName','planQty','bomVersion','status']},mes:{title:'MES 工单',url:'/mes/work-orders',cols:['workOrderNo','prodOrderNo','operationName','planQty','completedQty','status']},qms:{title:'QMS 检验单',url:'/qms/inspections',cols:['inspectionNo','inspectionType','materialCode','inspectedQty','defectRate','result']},energy:{title:'设备能耗',url:'/energy/usages',cols:['equipmentCode','statDate','energyType','energyValue','outputQty','unitConsumption']}}
-const c=computed(()=>config[props.kind]);async function load(){loading.value=true;try{const{data}=await http.get(c.value.url,{params:{page:1,size:50}});rows.value=data.data?.content||data.data||[]}finally{loading.value=false}}onMounted(load)
-</script><template><el-card><template #header><span>{{c.title}}</span><el-button style="float:right" @click="load">刷新</el-button></template><el-table :data="rows" v-loading="loading"><el-table-column v-for="key in c.cols" :key="key" :prop="key" :label="key"/></el-table><el-empty v-if="!loading&&!rows.length" description="暂无业务数据；请通过接口或后续维护表单创建演示单据。"/></el-card></template>
+import TablePager from '../shared/components/TablePager.vue'
+
+const health = ref<any>({}), databases = ref<any[]>([]), loading = ref(false)
+const page = ref(1), size = ref(20), total = ref(0)
+
+async function load() {
+  loading.value = true
+  try {
+    const [healthResult, databaseResult] = await Promise.all([http.get('/health'), http.get('/health/databases', { params: { page: page.value, size: size.value } })])
+    health.value = healthResult.data.data
+    databases.value = databaseResult.data.data.content
+    total.value = databaseResult.data.data.totalElements
+  } finally { loading.value = false }
+}
+onMounted(load)
+</script>
+
+<template>
+  <section class="ops-page" v-loading="loading">
+    <div class="page-head"><div><span>RUNTIME OPERATIONS</span><h1>平台运行监控</h1><p>检查 Java 单进程、MySQL 连接以及十系统数据库表结构。</p></div><el-button @click="load">重新检查</el-button></div>
+    <div class="metrics"><el-card shadow="never"><span>应用状态</span><b class="up">{{health.status||'UNKNOWN'}}</b></el-card><el-card shadow="never"><span>后端服务</span><b>{{health.service||'-'}}</b></el-card><el-card shadow="never"><span>连接数据库</span><b>{{health.database||'-'}}</b></el-card><el-card shadow="never"><span>MySQL 版本</span><b>{{health.mysqlVersion||'-'}}</b></el-card></div>
+    <el-card shadow="never"><template #header><b>数据库与表结构</b></template><el-table :data="databases" stripe><el-table-column prop="layer" label="架构层" min-width="180"/><el-table-column prop="dbName" label="Database" min-width="190"/><el-table-column prop="tableCount" label="表数量" width="120"/><el-table-column label="状态" width="120"><template #default><el-tag type="success">可访问</el-tag></template></el-table-column></el-table><TablePager v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load"/></el-card>
+  </section>
+</template>
+
+<style scoped>.ops-page{max-width:1450px;margin:0 auto}.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:17px}.page-head span{color:#3775d6;font-size:10px;font-weight:800;letter-spacing:1.4px}.page-head h1{margin:6px 0;color:#243d5d;font-size:25px}.page-head p{color:#8291a4;font-size:12px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:15px}.metrics span,.metrics b{display:block}.metrics span{color:#8797aa;font-size:11px}.metrics b{margin-top:9px;color:#294361;font-size:18px}.metrics .up{color:#16a16f}</style>

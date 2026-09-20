@@ -70,6 +70,16 @@ public class SecurityConfig {
                                 "/doc.html",
                                 "/webjars/**"
                         ).permitAll()
+                        .requestMatchers("/api/mdm/**").hasAuthority("SYSTEM_MDM")
+                        .requestMatchers("/api/crm/**").hasAuthority("SYSTEM_CRM")
+                        .requestMatchers("/api/erp/**").hasAuthority("SYSTEM_ERP")
+                        .requestMatchers("/api/plm/**").hasAuthority("SYSTEM_PLM")
+                        .requestMatchers("/api/srm/**").hasAuthority("SYSTEM_SRM")
+                        .requestMatchers("/api/wms/**").hasAuthority("SYSTEM_WMS")
+                        .requestMatchers("/api/mes/**").hasAuthority("SYSTEM_MES")
+                        .requestMatchers("/api/qms/**").hasAuthority("SYSTEM_QMS")
+                        .requestMatchers("/api/eam/**").hasAuthority("SYSTEM_EAM")
+                        .requestMatchers("/api/energy/**").hasAuthority("SYSTEM_ENERGY")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->
@@ -81,7 +91,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** 演示环境跨域放开：三个前端（报表/后台/源系统）端口不同 */
+    /** 本地演示允许同机前端访问；正式部署应收敛到实际域名。 */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();

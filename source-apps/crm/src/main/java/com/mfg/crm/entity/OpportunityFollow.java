@@ -1,0 +1,2 @@
+package com.mfg.crm.entity;import jakarta.persistence.*;import lombok.*;import java.time.*;
+@Entity @Table(name="crm_opportunity_follow",catalog="src_crm") @Getter @Setter @NoArgsConstructor public class OpportunityFollow{@Id @GeneratedValue(strategy=GenerationType.IDENTITY)private Long id;@Column(name="opportunity_no")private String opportunityNo;@Column(name="follow_type")private String followType;@Column(name="follow_content")private String followContent;@Column(name="follow_user")private String followUser;@Column(name="follow_at")private LocalDateTime followAt;}

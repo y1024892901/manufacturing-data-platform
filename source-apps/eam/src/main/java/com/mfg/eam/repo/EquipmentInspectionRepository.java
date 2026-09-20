@@ -1,0 +1,1 @@
+package com.mfg.eam.repo;import com.mfg.eam.entity.EquipmentInspection;import org.springframework.data.jpa.repository.JpaRepository;public interface EquipmentInspectionRepository extends JpaRepository<EquipmentInspection,Long>{boolean existsByInspectionNo(String no);}

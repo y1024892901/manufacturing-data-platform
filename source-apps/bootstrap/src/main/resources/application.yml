@@ -7,8 +7,8 @@
 #
 # ⚠️ 密钥说明
 #   MYSQL_PASSWORD / JWT_SECRET 均**不设默认值**，必须由环境变量注入。
-#   启动方式见 source-apps/run.bat（它会读取 infra\.env 后拉起应用）。
-#   这样可确保口令不落入任何受版本控制的文件。
+#   使用 IDEA 启动 MfgSourceApplication，并在运行配置中注入环境变量。
+#   这样可确保口令不落入任何受版本控制的文件；项目不依赖 run.bat。
 # ============================================================
 
 server:
@@ -25,6 +25,13 @@ server:
 spring:
   application:
     name: mfg-source-apps
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 11
+    validate-on-migrate: true
 
   # ---------- 主数据源：权限与元数据库 ----------
   # 各业务系统的库通过多数据源切换（见 shared/common 的 DataSourceConfig）

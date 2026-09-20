@@ -1,0 +1,1 @@
+package com.mfg.srm.repo;import com.mfg.srm.entity.PurchaseOrder;import org.springframework.data.jpa.repository.JpaRepository;public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder,Long>{boolean existsByPurchaseOrderNo(String no);}

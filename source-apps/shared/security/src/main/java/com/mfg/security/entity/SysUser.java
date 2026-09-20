@@ -48,6 +48,12 @@ public class SysUser {
     @Column(name = "dept_code", length = 32)
     private String deptCode;
 
+    @Column(name = "data_scope_type", nullable = false, length = 16)
+    private String dataScopeType = "ROLE";
+
+    @Column(name = "data_scope_value", length = 500)
+    private String dataScopeValue;
+
     @Column(name = "position_name", length = 50)
     private String positionName;
 
@@ -60,12 +66,27 @@ public class SysUser {
     @Column(name = "is_enabled", nullable = false)
     private Boolean enabled = true;
 
+    @Column(name = "is_locked", nullable = false)
+    private Boolean locked = false;
+
+    @Column(name = "failed_login_count", nullable = false)
+    private Integer failedLoginCount = 0;
+
     /** 演示账号标记，便于演示时筛选 */
     @Column(name = "is_demo_account", nullable = false)
     private Boolean demoAccount = true;
 
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -9,10 +9,10 @@
 | 权限 | Spring Security + JWT + MySQL RBAC  | 36 账号、36 角色、325 权限映射已验证 |
 | 审批 | 自研审批引擎                              | BOM 串行三级审批及 11 项边界测试已验证 |
 | 主数据 | Java MDM + MySQL                    | 物料草稿、审批、发布、分发已验证 |
-| 前端 | vue + TypeScript（待实施）               | 未开始 |
-| 采集/数仓 | Python + MySQL SQL 转换任务（待实施）        | 未开始 |
-| 编排 | Dagster（后期接入）                       | 未开始 |
-| AI | DeepSeek/千问 + MCP（ADS 建成后接入）        | 未开始 |
+| 前端 | Vue 3 + TypeScript + Vite，单工程 | 已实现统一门户、十系统独立路由与懒加载 |
+| 采集/数仓 | Python + MySQL SQL 转换任务 | P6 暂缓 |
+| 编排 | Dagster | P6 暂缓 |
+| AI | 千问/DeepSeek + MCP + Skill | P7 暂缓 |
 
 ## 不采用的当前实现
 

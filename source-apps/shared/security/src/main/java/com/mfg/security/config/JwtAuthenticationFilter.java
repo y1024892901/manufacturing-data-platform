@@ -61,10 +61,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String username = claims.getSubject();
-        SysUser user = userRepository.findByUsername(username).orElse(null);
+        SysUser user = userRepository.findByUsernameAndDeletedFalse(username).orElse(null);
 
-        if (user == null || !Boolean.TRUE.equals(user.getEnabled())) {
-            log.debug("用户不存在或已停用: {}", username);
+        if (user == null || !Boolean.TRUE.equals(user.getEnabled()) || Boolean.TRUE.equals(user.getLocked())) {
+            log.debug("用户不存在、已停用或已锁定: {}", username);
             chain.doFilter(request, response);
             return;
         }
@@ -75,7 +75,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         principal.getPermissions().forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
         // 角色加 ROLE_ 前缀，供 hasRole() 使用
-        principal.getRoleCodes().forEach(r -> authorities.add(new SimpleGrantedAuthority(r)));
+        principal.getRoleCodes().forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
+        // 系统访问权独立于业务权限，URL 层先拦住无权进入的系统。
+        principal.getSystems().forEach(s -> authorities.add(
+                new SimpleGrantedAuthority("SYSTEM_" + s.toUpperCase(java.util.Locale.ROOT))));
 
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(principal, null, authorities);
@@ -92,6 +95,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 user.getRealName(),
                 user.getDeptCode(),
                 user.getPositionName(),
+                user.getDataScopeType(),
+                user.getDataScopeValue(),
                 user.roleCodes(),
                 user.getRoles().stream()
                         .flatMap(r -> r.permissionCodes().stream())

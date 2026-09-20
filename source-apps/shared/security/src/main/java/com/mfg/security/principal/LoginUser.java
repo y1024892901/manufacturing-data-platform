@@ -20,6 +20,8 @@ public class LoginUser {
     private final String realName;
     private final String deptCode;
     private final String positionName;
+    private final String dataScopeType;
+    private final String dataScopeValue;
 
     /** 角色编码集合，如 SALES_REP、PROCESS_SUPERVISOR */
     private final Set<String> roleCodes;
