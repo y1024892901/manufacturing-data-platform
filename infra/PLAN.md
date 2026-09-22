@@ -1,0 +1,51 @@
+# infra/ — 基础设施与部署
+
+> **整体计划** · 基础设施/运维（非十系统之一）
+
+## 职责边界
+
+回答演示环境的三个问题：**数据库从哪来、配置从哪来、服务怎么起。**
+
+| 问题 | 本目录的答案 |
+|---|---|
+| 数据库从哪来 | 本机 MySQL 8.0.43（`D:\mysql8`，端口 3306），由 `mysql8/` 管理 |
+| 表和数据从哪来 | `db-init/` 的 11 个幂等 SQL 脚本，一次建成 18 库、99 表与全套种子数据 |
+| 配置从哪来 | `.env`（`MYSQL_*` / `LLM_*` / 端口 / `JWT_SECRET`），由 `.gitignore` 排除，绝不入库 |
+| 服务怎么起 | Python 侧（Dagster / API）预留 `docker-compose.yml`；Java 与前端走本机原生进程 |
+
+**谁依赖它：**
+
+| 依赖方 | 依赖什么 |
+|---|---|
+| `source-apps/`（10 个 Java 系统） | `MYSQL_HOST/PORT/USER/PASSWORD`、各 `SRC_*_DB` 库名 |
+| `apps/api`、`orchestration/` | 数仓四层库名 `DW_ODS_DB`…`DW_ADS_DB`、`mfg_auth` / `mfg_app` |
+| 任意新克隆的机器 | `db-init/` 按编号顺序执行即可得到完整可运行的演示数据 |
+| `ops/` 演示脚本 | 3306 端口上的 MySQL 实例必须处于运行状态 |
+
+## 不做什么
+
+- **不做业务逻辑** —— 不写一行 Java 业务代码，不定义审批规则/治理规则的语义（规则内容在 `db-init/08_seed_data.sql` 里，语义实现各归其模块）。
+- **不容器化本机 MySQL** —— 容器化会与已有本地 5.7/8.0 实例抢 3306 端口，且数据文件不便用 Navicat 直接查看。
+- **不容器化 10 个 Java 源系统** —— 单进程 Spring Boot，本机运行便于 IDE 调试，且要求数据落在 D 盘。
+- **不管理前端** —— Vite dev server（`npm run dev`）无需容器。
+- **不替代 `ops/`** —— 本目录负责「把环境立起来」，日常巡检/备份/演示脚本归 `ops/`。
+
+## 规划内容
+
+| 子项 | 定位 | 状态 |
+|---|---|---|
+| `mysql8/` | 本机 MySQL 8.0.43 独立实例的启停与状态查看（3 个 .bat） | ✅ 已实现 |
+| `db-init/` | 18 库 / 99 表的建库建表与种子数据（11 个幂等 SQL） | ✅ 已执行完毕 |
+| `.env` | 运行期唯一配置源（数据库、LLM、端口、JWT） | ✅ 已配置（不入库） |
+| `.env.example` | 配置模板 | ⚠️ 内容陈旧（仍是 PostgreSQL 版） |
+| `docker-compose.yml` | Python 侧服务编排（Dagster / API） | ⚠️ 预留，依赖的 Dockerfile 缺失 |
+| `dockerfiles/` | 服务镜像定义 | ❌ 已废弃 |
+| `configs/` | Dagster / dbt 等服务配置 | ❌ 未实现（骨架） |
+
+### 三条规划原则
+
+1. **数据落在 D 盘、由本机实例承载** —— 不走 Docker，一个实例多库隔离（MySQL 的 database 承担了其他数据库中 schema 的角色）。
+2. **密钥只存在于 `.env`** —— `.env` 进 `.gitignore`；脚本从 `.env` 读取口令，不在源码中出现明文。
+3. **初始化脚本必须幂等** —— 全部 `IF NOT EXISTS` / `ON DUPLICATE KEY UPDATE`，演示可反复重来。
+
+> 详细进展见 [STATUS.md](STATUS.md)。
