@@ -37,7 +37,7 @@ public class P3FlowService {
         db.update("UPDATE src_srm.srm_rfq SET status='AWARDED',winner_supplier_code=? WHERE id=?", quote.get("supplier_code"), id);
         db.update("UPDATE src_srm.srm_supplier_quote SET status=IF(id=?,'AWARDED','LOST') WHERE rfq_id=?", quoteId, id);
         long poId = db.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        events.publish("SRM.PURCHASE_ORDER.SENT", "SRM", "WMS", "PURCHASE_ORDER", poId,
+        events.publish("SRM.PURCHASE_ORDER.SENT", "srm", "wms", "PURCHASE_ORDER", poId,
                 Map.of("purchaseOrderNo", poNo, "rfqNo", rfq.get("rfq_no")));
         return one("SELECT * FROM src_srm.srm_purchase_order WHERE id=?", poId);
     }
@@ -63,7 +63,7 @@ public class P3FlowService {
             """, inspectionNo, asn.get("material_code"), asn.get("batch_no"), asn.get("supplier_code"),
                 asn.get("asn_no"), asn.get("ship_qty"), receiptNo);
         db.update("UPDATE src_srm.srm_asn SET status='ARRIVED' WHERE id=?", id);
-        events.publish("WMS.RECEIPT.PENDING_INSPECTION", "WMS", "QMS", "RECEIPT", receiptId,
+        events.publish("WMS.RECEIPT.PENDING_INSPECTION", "wms", "qms", "RECEIPT", receiptId,
                 Map.of("receiptNo", receiptNo, "inspectionNo", inspectionNo));
         return one("SELECT * FROM src_wms.wms_receipt WHERE id=?", receiptId);
     }
@@ -96,7 +96,7 @@ public class P3FlowService {
             db.update("INSERT INTO src_srm.srm_supplier_quality(issue_no,supplier_code,source_no,defect_qty,ppm,problem_desc) VALUES(?,?,?,?,?,?)",
                     issueNo, inspection.get("supplier_code"), inspection.get("source_no"), defectQty, ppm, "IQC检验不合格，NCR=" + ncrNo);
         }
-        events.publish("QMS.INSPECTION.JUDGED", "QMS", "WMS", "INSPECTION", id,
+        events.publish("QMS.INSPECTION.JUDGED", "qms", "wms", "INSPECTION", id,
                 Map.of("inspectionNo", inspection.get("inspection_no"), "result", result, "inventoryStatus", quality));
         return one("SELECT * FROM src_qms.qms_inspection WHERE id=?", id);
     }

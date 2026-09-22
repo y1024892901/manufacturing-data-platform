@@ -33,7 +33,7 @@
 | 平台层 | 4 | 29 | `mfg_auth` 15（含 `08` 建的 `sys_dept`）、`mfg_meta` 5、`mfg_app` 5、`mfg_ops` 4 |
 | **合计** | **18** | **99** | `01` 建库 18；`02`~`07` 建表 96，加 `08` 的 1 张与 `10` 的 2 张共 99 |
 
-> **口径提示**：`db-init/README.md`、`01_databases.sql` 文件头（写「20 个数据库」）、`mysql8/README.md`（写「20 个库」）三处说法不一致。以实测为准：**18 个库**（见 [../STATUS.md](../STATUS.md) 的说明）。
+> **口径提示**：库数统一为 **18 个**（实测 `CREATE DATABASE` 语句数）。此前 `01_databases.sql` 文件头与 `mysql8/README.md` 误写「20 个」，已一并更正。
 
 ## 关键机制 / 使用方式
 
@@ -91,7 +91,7 @@ $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 11_plm_ecn_wo
 | # | 缺口 | 影响 | 说明 |
 |---|---|---|---|
 | 1 | `README.md` 执行清单漏了 `09`/`10`/`11` | **高** | 照 README 重建会得到一套**权限全空**的库：`sys_role_permission` 无数据 → 所有 `@PreAuthorize` 拦截；且缺 BOM 副本与 PLM 审批链 |
-| 2 | 「库数」口径三处不一致 | 中 | `01` 文件头与 `mysql8/README.md` 写「20 个库」，`db-init/README.md` 写 18，实测 18 |
+| 2 | ~~「库数」口径三处不一致~~ **已修复** | — | 统一为 18（实测 `CREATE DATABASE` 语句数）；`01_databases.sql` 与 `mysql8/README.md` 的「20 个」已改 |
 | 3 | 无迁移/版本机制 | 中 | `10`/`11` 已是「后补脚本」形态，说明无登记机制；重建顺序完全靠人工维护 README |
 | 4 | 无单条一键重建脚本 | 中 | 需要人肉敲 11 条 `mysql.exe < xx.sql`；`ops/scripts/` 计划中的 `reset.sh` 尚未实现 |
 | 5 | 无基线校验 | 低 | 没有「执行后应得 18 库 99 表」的自动断言；各脚本尾部的 `SELECT` 只能肉眼比对 |

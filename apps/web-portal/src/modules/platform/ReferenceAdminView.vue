@@ -17,7 +17,18 @@ const form = reactive<any>({})
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
-const kind = computed(() => String(route.meta.kind || route.path.split('/').pop()) === 'roles' ? 'roles' : 'organization')
+// 路由通过 props 传入 kind（见 router/index.ts 的 /platform/roles 与 /platform/organization）。
+// 此前读的是 route.meta.kind，而路由从未设置该 meta，实际是靠 path 末段兜底才碰巧可用。
+const props = defineProps<{ kind?: string }>()
+const KNOWN_KINDS = ['roles', 'organization']
+const kind = computed(() => {
+  const raw = props.kind ?? (route.meta.kind as string | undefined) ?? route.path.split('/').pop() ?? ''
+  if (!KNOWN_KINDS.includes(raw)) {
+    console.warn(`[ReferenceAdminView] 未知的 kind="${raw}"，按 organization 处理`)
+    return 'organization'
+  }
+  return raw
+})
 const isRole = computed(() => kind.value === 'roles')
 const title = computed(() => isRole.value ? '角色与权限' : '组织与岗位')
 

@@ -39,7 +39,7 @@ MySQL Community Server **8.0.43**（免安装 ZIP 版，非安装包）· Window
 │  D:\mysql-5.7.32\data              D:\mysql8\data        │
 │  Windows 服务: MySQL               Windows 服务: 无（进程）│
 │  端口: 3306（须停止）               端口: 3306（本项目用）  │
-│  18 个业务库（book_store 等）        本项目 20 个库         │
+│  18 个业务库（book_store 等）        本项目 18 个库         │
 │                                                            │
 │  ★ 两个数据目录物理隔离，互不可见                          │
 │  ★ 但端口相同 —— 原 5.7 服务必须保持停止                   │
@@ -100,7 +100,7 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 | 用户名 | `root` |
 | 密码 | 见 `infra/.env` |
 
-连上后能看到本项目的 20 个库（`src_*` / `mfg_*`）。
+连上后能看到本项目的 18 个库（`src_*` / `mfg_*`）。
 
 > 若同时想管理原 5.7 的 18 个库，需先启动 5.7 服务并临时改端口，**不建议在演示期间操作**。
 

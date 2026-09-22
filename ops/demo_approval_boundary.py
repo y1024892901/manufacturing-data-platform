@@ -12,6 +12,7 @@
 用法:  python ops/demo_approval_boundary.py
 """
 import json
+import sys
 import urllib.error
 import urllib.request
 
@@ -152,3 +153,6 @@ print("\n" + "=" * 68)
 passed = sum(results)
 print(f"  结果: {passed}/{len(results)} 通过")
 print("=" * 68)
+
+# 任一断言失败即以非零退出，便于 CI 判定
+sys.exit(0 if passed == len(results) else 1)

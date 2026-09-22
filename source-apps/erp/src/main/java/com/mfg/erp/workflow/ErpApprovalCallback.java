@@ -1,4 +1,4 @@
-package com.mfg.erp.callback;
+package com.mfg.erp.workflow;
 
 import com.mfg.erp.service.ErpP2Service;
 import com.mfg.workflow.callback.ApprovalCallback;

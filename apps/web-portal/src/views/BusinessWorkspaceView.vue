@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../api/http'
+import TablePager from '../shared/components/TablePager.vue'
 
 type Field = { key: string; label: string; type?: 'text' | 'number' | 'date' | 'select'; options?: string[]; required?: boolean; placeholder?: string }
 type Action = { label: string; path: (row: any) => string; tone?: 'primary' | 'success' | 'warning' | 'danger'; prompt?: { label: string; key: string; hint: string }; bodyPrompt?: boolean }
@@ -103,6 +104,9 @@ const configs: Record<string, Workspace> = {
 
 const c = computed(() => configs[props.kind] || configs.crm)
 const rows = ref<any[]>([])
+const page = ref(1)
+const size = ref(20)
+const total = ref(0)
 const loading = ref(false)
 const loadError = ref('')
 const dialog = ref(false)
@@ -121,12 +125,22 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await http.get(c.value.url, { params: { page: 1, size: 50 } })
-    rows.value = data.data?.content || data.data || []
+    const { data } = await http.get(c.value.url, { params: { page: page.value, size: size.value } })
+    // 多数端点返回分页对象 { content, totalElements }，少数返回纯数组
+    const payload = data.data
+    if (payload && Array.isArray(payload.content)) {
+      rows.value = payload.content
+      total.value = payload.totalElements ?? payload.content.length
+    } else {
+      rows.value = Array.isArray(payload) ? payload : []
+      total.value = rows.value.length
+    }
   } catch (error: any) {
     loadError.value = error.message || '数据加载失败'
   } finally { loading.value = false }
 }
+// 切换业务域时回到第一页，避免停留在上一个域的不存在页码上
+watch(() => props.kind, () => { page.value = 1; load() })
 const create = async () => {
   const missing = c.value.fields.find(f => f.required && !form[f.key])
   if (missing) return ElMessage.warning(`请填写：${missing.label}`)
@@ -174,12 +188,13 @@ onMounted(load)
     <div class="flow-nav"><span>相关工作区</span><el-button v-for="link in c.links" :key="link[1]" text @click="$router.push(link[1])">{{ link[0] }} →</el-button></div>
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"><template #default><el-button link type="primary" @click="load">重新加载</el-button></template></el-alert>
     <el-card class="data-card" shadow="never">
-      <template #header><div class="card-head"><span>业务记录</span><small>共 {{ rows.length }} 条 · 最近刷新</small></div></template>
+      <template #header><div class="card-head"><span>业务记录</span><small>共 {{ total }} 条 · 最近刷新</small></div></template>
       <el-table :data="rows" v-loading="loading" stripe>
         <el-table-column v-for="key in c.cols" :key="key" :prop="key" :label="key.replaceAll('Code','编码').replaceAll('No','编号')" min-width="128" show-overflow-tooltip />
         <el-table-column v-if="c.actions?.length" label="业务动作" width="190" fixed="right"><template #default="{ row }"><el-button v-for="action in c.actions" :key="action.label" link :type="action.tone" @click="run(action,row)">{{ action.label }}</el-button></template></el-table-column>
       </el-table>
       <el-empty v-if="!loading && !rows.length" description="暂无业务记录，可通过右上角按钮创建第一张业务单据。" />
+      <TablePager v-if="rows.length" v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load" />
     </el-card>
     <el-dialog v-model="dialog" :title="c.createText" width="680px" destroy-on-close>
       <div class="form-note">带 <b>*</b> 的字段为业务必填项。编码应引用已发布的统一主数据。</div>

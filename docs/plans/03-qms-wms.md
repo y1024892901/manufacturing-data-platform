@@ -1,0 +1,88 @@
+# 03. QMS + WMS 收口
+
+> **依赖**：[00 横向地基](00-foundation.md)（鉴权 / 事件消费 / 终态动作 / 实体同步四套模板） · **预估**：1 轮 · **对应验收项**：QMS 补 ①③⑤、④ 补消费侧（② 已达标）· WMS 补 ①③④⑤（② 已达标）
+>
+> 现状依据：[qms/STATUS.md](../../source-apps/qms/STATUS.md)、[wms/STATUS.md](../../source-apps/wms/STATUS.md)；验收定义见 [system-functional-catalog.md](../system-functional-catalog.md)；计划分工见 [README.md](README.md)。
+> 下表「涉及文件 / 位置」以 `source-apps/<系统>/src/main/java/com/mfg/<系统>/` 为前缀，用 `…` 省略该前缀；共享类在 `source-apps/shared/`；SQL 一律指 `source-apps/bootstrap/src/main/resources/db/migration/`。
+
+## 目标
+
+QMS（★★★★☆）与 WMS（★★★☆☆）的主线最扎实——QMS 的五类单据都能走到终态、检验判定驱动库存并回写供应商质量；WMS 的 12 类库存动作、六态质量转换、强制 ledger 留痕与业务幂等号是 P3 里做得最好的一段。本计划把两者共同的三个硬缺口补齐：**接上审批引擎**（两个系统至今一次 `ApprovalEngine.start()` 都没有调用）、**建立报表层**（两个系统的 `query/` 包都不存在，第 ⑤ 项均为零）、以及**把权限与事件真正接到角色和总线上**。做完后 QMS 的让步接收与 CAPA 关闭走审批流、WMS 的盘盈盘亏走审批流，两者各自发布 ≥2 条幂等业务事件，并各自拥有可演示的运营报表接口。
+
+## 现状
+
+**QMS —— 单据闭环最完整，但审批与报表为零。** 已跑通「ASN 到货生成待检 → 判定 → 驱动 WMS 库存状态转换（可用/隔离/退供/报废）→ 自动派生 NCR → 处置 → 返工闭环 → 回写 SRM 供应商质量」，5 类核心单据（检验单、NCR、返工单、CAPA、8D）均有状态机且能到终态，验收项 ② 是十系统里仅有的两个达标项之一。差距：① **完全未接审批引擎**——无 `workflow/` 包、无 `ApprovalCallback` 实现、全域零 `ApprovalEngine.start()`，CAPA/8D 关闭只用 `@PreAuthorize` 当门禁；② **过程质量、成品质量两个模块整体未实现**；③ **统计报表接口为零**——`defect_rate` 与 PPM 已算已落库，却没有任何端点取得出来；④ 权限面缺口——`QMS:NCR:DISPOSE`、`QMS:CAPA:CLOSE`、`QMS:8D:CLOSE` 只写进 `sys_permission` 字典，**没有任何 `sys_role_permission` 授予行**（`09_role_permission.sql` 的 `QUALITY_ENGINEER/QUALITY_SUPERVISOR` 通配授权在 db-init 阶段执行，早于 Flyway `V37`/`V38`），三个端点的放行条件实际退化为 `hasRole('ADMIN')`；`QMS:INSPECTION:JUDGE` 已定义但 `InspectionController.judge()` 上没有注解；⑤ 三个强类型 controller（`InspectionController`、`DefectController`、`ReworkController`）**整类无方法级鉴权**；⑥ 处置枚举三套并存（`DefectController` 用 `SCRAP`/`RETURN`，`QmsLifecycleService.dispose()` 用 `SCRAPPED`/`RETURNED`，`judge()` 的结论集合又是第三种混拼），且写的是两张不同的表列；⑦ `QmsP3Controller` 的 `/{kind}` 通配端点与字面量路径并存，扩白名单即路由冲突。
+
+**WMS —— 库存与质量状态线最扎实，但报表、审批、事件三空。** 12 类库存动作 + 六态质量转换 + 强制写 `wms_inventory_ledger` + 业务幂等号去重 + 8 个 Mockito 单测（全仓仅两个测试类之一）全部就位，调拨与盘点过账的校验是三模块里最严的。差距：① **仓储报表整块未实现**（库龄、周转、呆滞、缺料、准确率、作业时效六项全无，而 `wms_inventory` 已有 `received_date`/`last_in_date`/`last_out_date`，数据基础是有的）；② **库存存在两套未收口的写入通道**——`InventoryService.transact()` 走 JPA「读实体—改字段—save」，**无行锁**，且 `availableQty = onHandQty − allocatedQty` 与 `InventoryTransactionService` 独立维护 `available_delta` 的口径不一致，并发可能丢更新；③ `Inventory` 实体缺 `V33` 新增的 `quality_status`/`frozen_qty`/`received_date`，导致 `GET /api/wms/inventories` 看不到质量状态与冻结量；④ **审批未实现**——`WarehouseController` 整类零 `@PreAuthorize`（含最敏感的 `POST /api/wms/transactions`），`WmsP3Controller` 的 `transfers/confirm`、`counts/release`、`counts/review` 也无注解，catalog 要求的「盘盈盘亏审批」被实现成权限点 + 明细复核；⑤ **WMS 自身零 `publish()` 调用**——与 WMS 相关的唯一事件 `WMS.RECEIPT.PENDING_INSPECTION` 由 shared-common 的 `P3FlowService.arriveAsn()` 代发；⑥ 波次拣货、序列号、容器条码、库区全空。
+
+两个系统的逐项证据见各自 STATUS.md 的「对照最低验收」与「未实现 / 缺口」两节，此处不重复。
+
+## 任务拆解
+
+> 表内顺序即优先级；每行可独立完成、独立验证。QMS 的 1–14 与 WMS 的 15–26 可并行。
+> **与 00 的分工**：凡 00 已承接的动作（权限码与授权、QMS/WMS 端点鉴权、`Inventory` 与 `Inspection` 的实体映射、事件消费框架与试点），对应行已标注「以 00 为准」，本计划不重复改代码，只在 00 完成后做验收回归；其余各行是本计划自有工作量。
+
+| # | 系统 | 任务 | 涉及文件 / 位置 | 验收方式 |
+|---|---|---|---|---|
+| 1 | QMS | 权限授予与挂载：在 `V39+` 迁移里用 `JOIN` 写法补 `QMS:NCR:DISPOSE`、`QMS:CAPA:CLOSE`、`QMS:8D:CLOSE` 的 `sys_role_permission` 授予行（建议授 `QUALITY_ENGINEER` + `QUALITY_SUPERVISOR`，`ADMIN` 必授），并把**已存在的** `QMS:INSPECTION:JUDGE` 挂到 `InspectionController.judge()` 上 | 新增 `V39__…` 迁移（写法照抄 `infra/db-init/09_role_permission.sql` 的 `INSERT INTO sys_role_permission(role_id,permission_id) SELECT r.id,p.id FROM …`）；`…/qms/controller/InspectionController.java` | 用 `QUALITY_ENGINEER` 账号调 `POST /api/qms/ncrs/{id}/dispose`、`/capas/{id}/close`、`/8d/{id}/close`、`/inspections/{id}/judge` 全部 200（当前前三个需 `ADMIN`、第四个任意登录用户可调） 　**与 00 的 F1-03 为同一件事**（补授权行）；`QMS:INSPECTION:JUDGE` 的挂载属 00 的 F1-10，以 00 为准。 |
+| 2 | QMS | 三个强类型 controller 补方法级鉴权：`InspectionController`（建单、判定）、`DefectController`（建记录、处置）、`ReworkController`（建单、开工、完工）。权限码优先复用 `08_seed_data.sql` 已种子化的 `QMS:INSPECTION:*` / `QMS:DEFECT:*` | `…/qms/controller/InspectionController.java`、`DefectController.java`、`ReworkController.java`（三个类当前 `@PreAuthorize` 出现次数均为 0） | 无权限账号调用上述 7 个写端点全部 403；有权限账号照常通过 　**与 00 的 F1-10 为同一件事**，以 00 为准。 |
+| 3 | QMS | **接审批引擎**（验收项 ③ 的唯一缺口）：新建 `workflow/` 包与 `QmsApprovalCallback implements ApprovalCallback`（`supports(bizType)` / `onApproved` / `onRejected`），按 00 模板用 `ApprovalEngine.start(new StartApprovalRequest(bizType,bizId,bizNo,bizTitle,bizSnapshot))` 启动流程（照抄 `…/mdm/service/MasterDataService.java` 的调用写法）；两条流程：**让步接收审批**（`dispose()` 的 `CONCESSION` 分支改为先起流程，回调里落处置）与 **CAPA 关闭审批**；流程定义与节点按 `V25` 的幂等写法插入 `mfg_auth.wf_definition` / `wf_node` | 新建 `…/qms/workflow/` 包 + `…/qms/callback/`（命名照 MDM 的 `callback/` 惯例）；`…/qms/service/QmsLifecycleService.java`；`…/qms/controller/QmsP3Controller.java`；引擎见 `source-apps/shared/workflow/…/service/ApprovalEngine.java` | 一条 NCR 以 `CONCESSION` 处置时生成 `wf_instance`，审批通过后 `qms_ncr.disposition` 才落库；CAPA 关闭走同一机制；`mfg_auth.wf_instance` 能按业务单号查到实例与时间轴。`/close` 是「启动审批」还是「审批通过后的回调动作」**待确认** |
+| 4 | QMS | 处置与结论枚举统一（建 `domain/` 层）：把 `DefectController` 的 `SCRAP`/`RETURN`、`QmsLifecycleService.dispose()` 的 `SCRAPPED`/`RETURNED`、`judge()` 的第三套取值统一为单一枚举；明确 `qms_defect.disposition` 与 `qms_ncr.disposition` 两张表列的取值口径 | 新建 `…/qms/domain/` 包；`…/qms/controller/DefectController.java`、`…/qms/service/QmsLifecycleService.java`；列注释见 `infra/db-init/05_business_systems_2.sql` 与 `V36` | 全模块处置取值只有一套拼写；两列注释同步更新。既有演示数据的迁移方式**待确认**（演示库可重置则不必写数据迁移） |
+| 5 | QMS | 实体补齐与同步（验收项 ① 的实体缺口）：为 `qms_ncr`、`qms_capa`、`qms_eight_d` 补 JPA 实体（当前 5 张表靠 `P3CrudService` 白名单式裸 SQL 读写）；`Inspection` 实体补 `V36` 已加的 `source_type`/`source_no`/`standard_code` 与原有 `supplier_code` 四列（现只能从裸 SQL 结果里 `get("…")` 取值） | 新建 `…/qms/entity/`（当前 3 个实体：`Inspection`/`DefectRecord`/`ReworkOrder`）、`…/qms/repo/`；列见 `V36` 与 `05_business_systems_2.sql` | NCR/CAPA/8D 走实体读写；检验单详情能直接返回 `source_no`/`supplier_code`/`standard_code` 　`Inspection` 四列**与 00 的 F4-06 为同一件事**，以 00 为准；NCR/CAPA/8D 是否补实体按 00 的 F4-03 口径取舍——若 00 把它们登记为「裸 SQL 表」，本行降级为「只补必要实体」。 |
+| 6 | QMS | 状态机收回本模块：把 NCR/CAPA/8D 的状态迁移规则从 shared-common 的 `P3CrudService.rules()` 迁到 QMS 的 `domain/`；并补 `standards` 与 `sampling-plans` 的状态机——**`rules()` 里这两个 key 目前没有任何 case，落到 `default->Map.of()`，即对它们做任何状态迁移都会被拒** | `source-apps/shared/common/…/service/P3CrudService.java`（private `rules()`）；新建 `…/qms/domain/` 状态机类 | `POST /api/qms/standards` 建的标准可正常提交/发布（当前必被拒）；NCR/CAPA/8D 的迁移规则与现状完全一致（回归验证同一组正反例） 　状态机骨架**按 00 的 F3-03 模板**（`domain/` 下状态枚举 + 非法迁移校验）。 |
+| 7 | QMS | 通用 CRUD 与路由收口：给 `QmsP3Controller` 的 `K` 白名单加互斥断言（启动期校验不含 `inspections`/`reworks`，避免与字面量路径冲突），并把 `ncrs`/`capas`/`8d` 逐步迁到强类型 controller（与第 5 行配套） | `…/qms/controller/QmsP3Controller.java`（`K = Set.of("standards","sampling-plans","ncrs","capas","8d")`）| 断言在启动时生效；迁移完成后 `K` 只剩字典类对象；路由不再依赖 Spring「字面量优先」的隐式规则 |
+| 8 | QMS | 建 `query/` 层与统计报表（验收项 ⑤）：新增不良率趋势、一次合格率（FSY）、缺陷 Pareto、供应商质量绩效（PPM，数据已写入 `src_srm.srm_supplier_quality`）、待检积压与检验时效等聚合端点 | 新建 `…/qms/query/` 包 + 报表 controller（命名待确认）；数据源：`judge()` 已落库的 `defect_rate` 与 PPM | 至少 5 个聚合端点返回非空数据；`qms/STATUS.md` 验收项 ⑤ 由「部分」转达成 |
+| 9 | QMS | 过程质量最小切片：按 `inspection_type` 与 `operation_code` 落地首检/巡检/末检的记录规则、工序质量点绑定、质量预警阈值 | `…/qms/controller/InspectionController.java`、`…/qms/service/QmsLifecycleService.java`；`qms_inspection` 已有 `operation_code`/`workshop_code` 列 | 可按工序查出巡检记录；`qms/STATUS.md` 缺口「过程质量整体未实现」消除。SPC 数据表与控制图**范围外** |
+| 10 | QMS | 成品质量最小切片：完工检验（FQC）与出货检验（OQC）的放行动作、放行记录 | 同上 | 完工检验放行后单据到达终态；留样、质量证明文件**范围外** |
+| 11 | QMS | 主数据校验接线：建检验单时调 `MasterDataService.assertConsumable()`（全仓唯一调用方目前是 WMS 的 `InventoryService`，QMS 零调用），并读取只读副本 `qms_md_material`（已建表从未被读取） | `…/qms/controller/InspectionController.java`、`…/qms/service/QmsLifecycleService.java`；方法见 `…/mdm/service/MasterDataService.java` | 用未发布物料编码建检验单被拒；`qms_md_material` 的 `is_inspection_required`/`inspection_standard` 被用于建单默认值 |
+| 12 | QMS | 事件消费侧：订阅 `WMS.RECEIPT.PENDING_INSPECTION`，按 00 模板幂等建待检检验单（当前该事件由 `P3FlowService.arriveAsn()` 发起，QMS 侧是**直写 `qms_inspection`** 而非事件消费） | 新建 `…/qms/integration/` 包；发起方见 `source-apps/shared/common/…/service/P3FlowService.java` | 同一事件重复投递只建一张检验单。**取舍待确认**：改为事件消费会引入异步窗口，与现有「判定即生效」的同步直写是两种设计，需明确留哪一种 　**建立在 00 的 F2 消费框架之上**；00 的 F2-07 恰好试点 `WMS.RECEIPT.PENDING_INSPECTION`，本行与其对齐，避免两处各建一套消费者。 |
+| 13 | QMS | 两处低效查询改派生查询：`DefectController.create()` 与 `ReworkController.create()` 目前用 `findAll().stream().filter(…)` 在内存里按单号找来源记录 | `…/qms/controller/DefectController.java`、`ReworkController.java`、`…/qms/repo/` | 两个 `create()` 不再全表加载；来源不存在时返回同样的业务错误码 |
+| 14 | QMS | 判定实现收口：`QmsLifecycleService.judge()` 与 shared-common 的 `P3FlowService.judgeInspection()` 是同一件事的两份实现（都回写结论、都发 `QMS.INSPECTION.JUDGED`），确认哪一份是 `POST /api/qms/inspections/{id}/judge` 的实际实现、另一份是否死代码 | `…/qms/service/QmsLifecycleService.java`、`source-apps/shared/common/…/service/P3FlowService.java` | 全模块只剩一条判定路径；**待确认**：哪份保留取决于 WMS/SRM 侧调用点，需先查清调用图 |
+| 15 | WMS | `Inventory` 实体补 `V33` 三列映射：`quality_status`、`frozen_qty`、`received_date`（实体当前 12 个字段，均无这三列） | `…/wms/entity/Inventory.java`；列见 `V33__p3_wms_inventory_control.sql` | `GET /api/wms/inventories` 的 JSON 中出现质量状态与冻结量（当前必须查库或看 ledger 返回才能看到） 　**与 00 的 F4-04 为同一件事**，以 00 为准。 |
+| 16 | WMS | **库存写入通道收口**：`InventoryService.transact()` 改为复用 `InventoryTransactionService.action()`（或至少加 `FOR UPDATE` 行锁并写 `wms_inventory_ledger`），消除「JPA 通道无锁」与 `availableQty = onHandQty − allocatedQty` 的口径分歧；顺带把 `InventoryTransactionService.lock()` 的 `COALESCE(?,'')` 写法改成可用 `uk_inv` 索引的形式 | `…/wms/service/InventoryService.java`、`InventoryTransactionService.java`；唯一键 `uk_inv(material_code,warehouse_code,location_code,batch_no)` | 并发压测（或单测模拟）下同一次出库不再丢更新；`available_qty` 只有一个计算口径；**回归**：`InventoryTransactionServiceTest` 的 8 个用例全绿 |
+| 17 | WMS | 补鉴权：`WarehouseController` 整类（含 `POST /api/wms/transactions`、`POST /api/wms/locations`、`PATCH …/availability`）与 `WmsP3Controller` 的 `transfers/confirm`、`counts/release`、`counts/review` 补 `@PreAuthorize`；权限码用已种子化的 `WMS:STOCK:IN`/`WMS:STOCK:OUT`/`WMS:RECEIPT:CREATE`，缺的走 `V39+` 补种 | `…/wms/controller/WarehouseController.java`（该类 `@PreAuthorize` 出现次数为 0）、`…/wms/controller/WmsP3Controller.java` | 无权限账号调 `POST /api/wms/transactions` 返回 403（当前仅 `SYSTEM_WMS` 门禁）；其余写端点逐一验证 　**与 00 的 F1-09 为同一件事**（00 已列出 `POST /api/wms/locations`、`POST /api/wms/transactions`），以 00 为准。 |
+| 18 | WMS | **接审批引擎**（验收项 ③ 的审批半边）：新建 `workflow/` 包与 `WmsApprovalCallback`，把 catalog 要求的**盘盈盘亏审批**做成真流程（如盘点差异超阈值时由 `postCount` 前置启动审批，回调里过账）；流程定义按 `V25` 幂等写法种入 | 新建 `…/wms/workflow/` + `…/wms/callback/`；`…/wms/service/InventoryTransactionService.java` 的 `postCount()`；引擎见 `source-apps/shared/workflow/…/service/ApprovalEngine.java` | 一张带超阈值差异的盘点单过账前生成 `wf_instance`，审批通过后才写账；`WMS:COUNT:POST` 权限校验保留，但不再充当审批。阈值与「谁审批」**待确认** |
+| 19 | WMS | **补 ≥2 条幂等业务事件**（WMS 自身零 `publish()`）：建议 `WMS.STOCK.ISSUED`（生产领料/调拨出库 → ERP/MES 齐套与成本）与 `WMS.INVENTORY.BELOW_SAFETY`（可用量低于安全库存 → ERP/MES/SRM），发布点落在 `action()` 的 `ISSUE`/`SUPPLIER_RETURN` 与安全库存校验处 | `…/wms/service/InventoryTransactionService.java`；调用 `BusinessEventService.publish(eventType, sourceSystem, targetSystem, aggregateType, aggregateId, payload)`（**目标系统为单值小写码**，写法见 `source-apps/shared/common/…/integration/BusinessEventService.java` 与 CRM/ERP 的调用行） | `mfg_ops.biz_outbox` 中出现两条 `WMS.*` 事件；重复触发同一动作不产生重复事件。**必须与 01 的 #14（系统编码大小写混存）统一为小写**，否则去重键会重复 　事件类型命名与 `event_version` 用法**按 00 的 F2-01 契约**；与「跨库直写清单」的取舍（00 的 F2-06）保持一致。 |
+| 20 | WMS | 建 `query/` 层与仓储报表（验收项 ⑤，兼补第 7 个本职模块）：库龄（用 `received_date`/`last_in_date`）、周转率、呆滞、缺料（`available_qty` 对 MDM 副本 `wms_md_material.safety_stock`）、库存准确率、作业时效 | 新建 `…/wms/query/` 包 + 报表 controller（命名待确认）；`wms_md_material` 由 MDM 分发写入但 WMS 从未读取，正好补上 | 六类报表端点均可调用，其中至少 3 类返回非空数据；`wms/STATUS.md` 验收项 ⑤ 由「未实现」转达成 |
+| 21 | WMS | 补实体：为 `wms_receipt`、`wms_transfer`、`wms_count_plan`、`wms_count_line` 补 JPA 实体（目前只有 `P3CrudService` 泛型 CRUD 或裸 SQL），使 6 个本职模块都有实体 | 新建 `…/wms/entity/`（当前 3 个）、`…/wms/repo/`（当前 3 个） | 收货/调拨/盘点的详情走实体；`wms/STATUS.md` 验收项 ① 的实体缺口消除 |
+| 22 | WMS | 职责重叠收口：`wms_inventory_action`（泛型 CRUD 维护）与 `wms_inventory_ledger`（库存动作真实台账）两条路径写出的「库存动作」互不联动——决定废弃前者或让动作只落一张表 | `…/wms/controller/WmsP3Controller.java`、`…/wms/service/InventoryTransactionService.java`；表见 `V33`/`V38` | 演示时「库存动作」只有一个来源；`wms/STATUS.md` 缺口「两表职责重叠」消除 |
+| 23 | WMS | 幂等号阈值统一：`postCount()` 校验盘点单号 ≤50，而它派生的明细键要过 `action()` 的 ≤80（`wms_inventory_ledger.idempotency_key VARCHAR(80)`）——三处规则收到一处常量 | `…/wms/service/InventoryTransactionService.java`、`…/wms/dto/InventoryActionCommand.java` | 长度上限只有一处定义；超限报错信息一致 |
+| 24 | WMS | 盘盈盘亏单据：`postCount()` 目前直接改余额并写流水，**不生成调整单**；与第 18 行的审批配套补一张库存调整单（或明确不做并记录取舍） | 新建迁移 `V39+` + `…/wms/service/InventoryTransactionService.java` | 有调整单可查（含差异、审批人、过账时间）；若决定不做，则须在 `wms/STATUS.md` 写明取舍 |
+| 25 | WMS | 输入校验与健壮性：`POST /api/wms/locations` 无 `@Valid`、`WarehouseLocation` 无任何校验注解（可建出空编码库位，`existsByLocationCode` 对 null 不生效）；`InventoryService.transact()` 用 `locations.findAll().stream().filter(…)` 全表加载找库位 | `…/wms/controller/WarehouseController.java`、`…/wms/entity/WarehouseLocation.java`、`…/wms/service/InventoryService.java` | 空编码/重复编码库位返回 400 而非建成功；找库位改为按编码查询 |
+| 26 | WMS | 测试覆盖：补 `InventoryService` 与 `P3FlowService.upsertInventory()` 的用例（两者当前零覆盖），并把第 16 行收口后的语义纳入回归 | `…/wms/src/test/java/com/mfg/wms/service/`（当前仅 `InventoryTransactionServiceTest`，8 个用例） | 新增用例通过；WMS 测试总数从 8 增加，覆盖两条写入通道 |
+
+## 完成标准
+
+**QMS 达到五项（逐条判定依据）：**
+
+1. **① ≥5 个本职模块具有实体、服务、接口和角色权限** —— 质量基础、来料质量、不合格管理、CAPA/8D、质量分析已有接口，本计划第 9、10 行补上过程质量与成品质量的最小切片；8 类对象的实体覆盖（第 5 行）；`InspectionController`、`DefectController`、`ReworkController` 全部写端点有方法级鉴权（第 2 行），且 `QMS:NCR:DISPOSE`、`QMS:CAPA:CLOSE`、`QMS:8D:CLOSE`、`QMS:INSPECTION:JUDGE` 在 `sys_role_permission` 中均有授予行——`QUALITY_ENGINEER` 能处置与关闭，不再退化为仅 `ADMIN`。
+2. **② ≥3 类核心单据可创建 → 关闭/作废** —— 已达标（5 类：检验单、NCR、返工单、CAPA、8D），本计划不得降级：五类各验证一条从创建到终态的路径；跨表取舍（NCR 与不合品格记录的两套处置）在枚举统一后仍各自可达。
+3. **③ ≥1 个审批流程 + 1 个异常处理闭环** —— 让步接收与 CAPA 关闭走审批流（`wf_instance` 有实例、审批时间轴可查，第 3 行）；异常闭环保持现状并回归验证：不合格 → 自动派生 NCR + 写 `srm_supplier_quality`（含 PPM）→ 处置 → 返工单 → 关闭，同时库存转 `QUARANTINE`/`SUPPLIER_RETURN`/`SCRAP`。
+4. **④ ≥2 个幂等业务事件** —— 发送侧已有 2 处（`QMS.INSPECTION.JUDGED`、`QMS.NCR.DISPOSED`）；本计划补消费侧（第 12 行）后，`biz_inbox` 中出现 QMS 的幂等消费记录。
+5. **⑤ ≥1 页运营查询/统计报表** —— 至少 5 个聚合端点返回非空数据（第 8 行）；对应前端页面归 08 计划（`apps/web-portal/src/modules/qms/` 目前只有 `HomeView.vue` 占位页）。
+
+**WMS 达到五项（逐条判定依据）：**
+
+1. **① ≥5 个本职模块具有实体、服务、接口和角色权限** —— 7 个模块（基础设置、入库、上架与库存、出库、库内作业、质量库存、仓储报表）均有接口，第 20 行补上唯一空缺的仓储报表；实体覆盖第 15、21 行；`WarehouseController` 与 `WmsP3Controller` 的全部写端点具备方法级鉴权（第 17 行）。
+2. **② ≥3 类核心单据可创建 → 关闭/作废** —— 已达标（调拨、盘点、收货、上架），本计划不得降级：调拨 `DRAFT→CONFIRMED→COMPLETED`、盘点 `DRAFT→…→COMPLETED`、收货由 QMS 判定驱动到终态，各回归一条；作废侧确认 `CANCELLED` 仍可达。
+3. **③ ≥1 个审批流程 + 1 个异常处理闭环** —— 盘盈盘亏审批落地（第 18 行）；异常闭环保持并回归：冻结/解冻、隔离/放行、报废、退供构成的六态质量库存流转，以及盘点「库存已变化，请重新盘点」检测。
+4. **④ ≥2 个幂等业务事件** —— WMS 代码内出现 `publish()` 调用点（当前为零），`mfg_ops.biz_outbox` 落 ≥2 条 `WMS.*` 事件，重复触发不产生重复事件；系统编码与 01 的统一口径一致。
+5. **⑤ ≥1 页运营查询/统计报表** —— 库龄/周转/呆滞/缺料/准确率/作业时效中至少 3 类端点返回非空数据；对应前端页面归 08 计划（`apps/web-portal/src/modules/wms/` 目前只有 `HomeView.vue` 占位页）。
+
+**两系统共同：**
+
+- 迁移全部走 `V39+`，**不改动 `infra/db-init/`**；新增流程定义与权限授予一律写成幂等 `INSERT … SELECT … WHERE NOT EXISTS`（照 `V25`/`V37`/`V38` 的写法），避免重跑时重复；
+- 按 [README.md](README.md) 的交付约定，同步更新 `source-apps/qms/STATUS.md`、`source-apps/wms/STATUS.md` 与 [current-status.md](../current-status.md) 的总览表、验收矩阵；
+- QMS 与 WMS 的库存联动（判定驱动库存）在收口后不得引入新的不幂等写路径——`InventoryTransactionService.action()` 的业务幂等号语义是本模块最硬的约束。
+
+## 风险与前置
+
+- **前置：00 与分工边界。** 00 已承接：权限码授权（F1-03）、QMS/WMS 端点鉴权（F1-09/F1-10）、`Inventory` 与 `Inspection` 的实体映射（F4-04/F4-06）、事件消费框架与试点（F2-02~F2-07）——这四组在下表中已标注「以 00 为准」，本计划只做验收回归。本计划真正新增的是：两个系统的审批接入（第 3、18 行）、WMS 的事件发布（第 19 行）、两个系统的报表层（第 8、20 行）、库存写入通道收口（第 16 行）、QMS 的过程/成品质量切片与枚举统一。00 缺位时，审批与报表两部分仍可独立推进。
+- **与 01-bugfix 的边界。** 23 条已确认缺陷由 01 承接，其中 **#14（`mfg_ops.biz_outbox` 系统编码大小写混存）与本计划第 19 行直接冲突**——新增事件必须与 01 统一后的编码一致，否则 `biz_inbox(event_id,target_system)` 去重键会因大小写不同而重复；**#23（演示脚本不按失败退出）** 与第 3、18 行的审批边界演示相关，建议先由 01 修好再引用。
+- **待确认项（不确认即无法定稿的地方）**：QMS 判定实现保留 `QmsLifecycleService.judge()` 还是 `P3FlowService.judgeInspection()`；CAPA 关闭的 `/close` 是「启动审批」还是「审批通过后的回调动作」；让步接收审批的审批人角色与节点数；事件消费（第 12 行）是否取代现有同步直写；盘盈盘亏审批的阈值与审批人；是否建库存调整单（第 24 行）；`standards`/`sampling-plans` 补状态机后是否需要同步给前端与其他调用方；过程/成品质量最小切片的边界（本次不含 SPC 控制图、留样、质量证明文件）；处置枚举统一后既有演示数据的处理方式。
+- **已核对：00 的 F1-03 正确，`wms/STATUS.md` 的那句结论不成立。** `source-apps/wms/STATUS.md:166` 称三个 WMS 权限码「由 `V38` 迁移插入 `sys_permission`，并在 `09_role_permission.sql` 映射到 `WAREHOUSE_KEEPER`/`WAREHOUSE_SUPERVISOR`」。实际 SQL：`WAREHOUSE_KEEPER` 在 `09_role_permission.sql:208` 拿到的是一份**四码白名单**（`WMS:INVENTORY:VIEW`/`WMS:STOCK:IN`/`WMS:STOCK:OUT`/`WMS:STOCK:CHECK`），不含这三个码；`WAREHOUSE_SUPERVISOR` 在同文件 `:210` 拿到的是 `p.perm_code LIKE 'WMS:%'` 通配授权——但该文件属 db-init 通道（V1–V11 baseline），**执行早于 Flyway `V37`/`V38` 插入这三个码**，通配扩展时它们还不存在。结果：三个整类 `@PreAuthorize` 单元（`WmsP3Controller` 的 `POST /api/wms/transfers/{id}/execute`、`POST /api/wms/counts/{id}/post`、`POST /api/wms/inventory-actions/{action}`）实际放行条件退化为 `hasRole('ADMIN')`——与 QMS 那三个码同一病因。修复即 00 的 F1-03，本计划第 1、17 行只做验收回归。
+- **终态取值拼写待统一。** 00 的 F3-01 约定未生效单据用 `CANCELED`，而 WMS 现有状态机用的是 `CANCELLED`（双 L）；本计划第 18、24 行涉及的状态取值应与 00 的约定保持一致——**待确认**。
+- **WMS 通道收口是回归风险最高的一项。** 第 16 行会改变 `wms_stock_txn` 与 `wms_inventory_ledger` 的双写语义，而现有 8 个单测**只覆盖 `InventoryTransactionService`**、对 `InventoryService` 零覆盖——必须先补测试（第 26 行）再改实现，否则「改完不知道坏在哪」。
+- **权限与流程的体量风险。** 两个系统新增的权限授予与流程定义都落在迁移里，一旦角色编码写错（`sys_role_permission` 关联的是 `role_id` + `permission_id`，不是权限码），失败是静默的——验收时必须用真实角色账号调用，而不是只查 SQL。
+- **表内顺序即优先级。** 若 1 轮内无法完成，建议按每系统表内顺序截断：QMS 保留 1–8、WMS 保留 15–20——此时两个系统的 ①③④⑤ 均已达标的判定成立，被截断的是过程/成品质量、通用 CRUD 收口、测试与健壮性等质量项。
+- **明确不做（五项不要求，留待后续计划）**：WMS 的序列号管理、容器/条码/LPN、库区建模、波次与拣货、拆零与合并、推荐库位策略；QMS 的 SPC 数据与控制图、留样、质量证明文件、AQL 抽样量推导、缺陷代码库与质量等级；两个系统的前端页面（归 08）。

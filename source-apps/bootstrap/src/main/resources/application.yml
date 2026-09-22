@@ -34,7 +34,8 @@ spring:
     validate-on-migrate: true
 
   # ---------- 主数据源：权限与元数据库 ----------
-  # 各业务系统的库通过多数据源切换（见 shared/common 的 DataSourceConfig）
+  # 单数据源 + 跨库限定名访问：实体用 @Table(catalog="src_xxx")，
+  # 原生 SQL 直接写库名（如 src_erp.erp_sales_order）。本工程不使用多数据源切换。
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # 注意 characterEncoding 必须写 Java 字符集名 "UTF-8"，不能写 MySQL 的 "utf8mb4"，

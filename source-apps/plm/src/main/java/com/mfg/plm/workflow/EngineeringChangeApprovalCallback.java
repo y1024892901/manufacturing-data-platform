@@ -1,4 +1,4 @@
-package com.mfg.plm.callback;
+package com.mfg.plm.workflow;
 import com.mfg.plm.repo.EngineeringChangeRepository;import com.mfg.workflow.callback.ApprovalCallback;import com.mfg.workflow.entity.WfInstance;import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Component;
 /** 审批通过才批准 ECN；驳回/撤回回到草稿以便工程师修订后再次提交。 */
 @Component @RequiredArgsConstructor public class EngineeringChangeApprovalCallback implements ApprovalCallback{

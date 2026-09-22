@@ -149,7 +149,7 @@
 | `src/layouts/` | 2 | `PortalLayout.vue`（门户外壳）、`SystemLayout.vue`（系统外壳） |
 | `src/modules/` | **28** | 十系统业务页面，按系统分目录——见下表 |
 | `src/shared/components/` | 4 | `P3BusinessView.vue`（20 行，支撑 19 条路由）、`TablePager.vue`（46 行）、`SystemOverview.vue`（8 行）、`ModulePlaceholder.vue`（1 行） |
-| `src/views/` | **11** | 平铺的历史遗留目录；**6 个被路由引用，5 个已成死代码**——见「未实现 / 缺口」 |
+| `src/views/` | **6** | 平铺的历史遗留目录；**4 条路由引用 6 个文件**。原先另有 5 个死文件，已于 2026-09-22 删除 |
 | `src/styles/index.css` | 1（非 `.vue`） | 全局变量与通用类：`.page-title` / `.metric-card` / `.toolbar` / `.status-dot` 等 |
 
 `src/modules/` 内部构成（28 个）：
@@ -236,18 +236,18 @@
 
 **死代码**
 
-2. **`src/views/` 有 5 个文件不被任何路由引用**：`DashboardView.vue`、`EcnView.vue`、`EcnWorkspaceView.vue`、`ShellView.vue`、`SystemWorkspaceView.vue`。旁证是 `dist/assets/` 里没有它们的构建产物——说明它们从未进入构建图。其中 `EcnWorkspaceView.vue` 有 31 行、`ShellView.vue` 有 8 行，是**写完但被废弃的早期实现**。
-3. **`BusinessWorkspaceView.vue` 的 `configs` 映射有 14 个死配置**。该文件声明 22 个 `kind`，但只有 8 个被 `workspace(...)` 路由实际传入（`mes`、`mesReports`、`eamEquipment`、`eamInspection`、`eamFault`、`eamRepair`、`energy`、`energyWorkshop`）。其余 14 个（`mdmCustomers`、`mdmSuppliers`、`crm`、`erp`、`erpFinance`、`production`、`qms`、`qmsDefect`、`qmsRework`、`wmsInventory`、`wmsLocations`、`wmsTxn`、`srmPo`、`srmDelivery`）虽然 `/ops/:kind` 的映射表里有对应键，但那条路由是**重定向**，不会渲染 `BusinessWorkspaceView`——这些配置永远走不到。
+2. ~~**`src/views/` 有 5 个文件不被任何路由引用**~~ **已修复（2026-09-22 删除）**：`DashboardView.vue`、`EcnView.vue`、`EcnWorkspaceView.vue`、`ShellView.vue`、`SystemWorkspaceView.vue`。旁证是 `dist/assets/` 里没有它们的构建产物——说明它们从未进入构建图。其中 `EcnWorkspaceView.vue` 有 31 行、`ShellView.vue` 有 8 行，是**写完但被废弃的早期实现**。
+3. **`BusinessWorkspaceView.vue` 的 `configs` 映射有 14 个死配置**（未修复）。该文件声明 22 个 `kind`，但只有 8 个被 `workspace(...)` 路由实际传入（`mes`、`mesReports`、`eamEquipment`、`eamInspection`、`eamFault`、`eamRepair`、`energy`、`energyWorkshop`）。其余 14 个（`mdmCustomers`、`mdmSuppliers`、`crm`、`erp`、`erpFinance`、`production`、`qms`、`qmsDefect`、`qmsRework`、`wmsInventory`、`wmsLocations`、`wmsTxn`、`srmPo`、`srmDelivery`）虽然 `/ops/:kind` 的映射表里有对应键，但那条路由是**重定向**，不会渲染 `BusinessWorkspaceView`——这些配置永远走不到。
 
 **路由与菜单不一致**
 
-4. **12 条路由没有侧边栏入口，只能靠直接输入 URL 或从 `/ops/*` 旧路径重定向到达**：`/mdm/categories`、`/mdm/units`、`/mdm/organizations`、`/mdm/cost-centers`、`/mdm/subjects`（MDM 的 5 类基础字典）、`/qms/sampling`、`/qms/capas`、`/qms/8d`、`/srm/quality`、`/srm/performance`、`/wms/receipts`、`/wms/transfers`。根因是 `systemCatalog.ts` 的 `menus` 与 `router/index.ts` 的 `children` **分开声明、互不校验**（`/mdm` 路由有 16 个子页，菜单只列了 11 条）。
-5. **`/erp/atp`（交期承诺）与 `/erp/sales-orders` 指向同一个 `kind='sales'`**，页面标题与列完全相同，并非独立的 ATP 视图。菜单里两者并列展示，会让使用者误以为有两个不同页面。
+4. ~~**12 条路由没有侧边栏入口**~~ **已修复（2026-09-22）**——已在 `systemCatalog.ts` 补齐全部 12 条菜单项。原问题：`/mdm/categories`、`/mdm/units`、`/mdm/organizations`、`/mdm/cost-centers`、`/mdm/subjects`（MDM 的 5 类基础字典）、`/qms/sampling`、`/qms/capas`、`/qms/8d`、`/srm/quality`、`/srm/performance`、`/wms/receipts`、`/wms/transfers`。根因是 `systemCatalog.ts` 的 `menus` 与 `router/index.ts` 的 `children` **分开声明、互不校验**（`/mdm` 路由有 16 个子页，菜单只列了 11 条）。
+5. ~~**`/erp/atp` 与 `/erp/sales-orders` 指向同一个 `kind='sales'`**~~ **已修复（2026-09-22）**——已为 ATP 新增独立 `kind='atp'` 配置与专属动作（交期计算 / 确认交期）。原问题：页面标题与列完全相同，并非独立的 ATP 视图。菜单里两者并列展示，会让使用者误以为有两个不同页面。
 
 **代码质量问题**
 
-6. **`ReferenceAdminView.vue` 声明读取 `route.meta.kind`，但路由只传了 `props: { kind }`，而该组件根本没有声明 `kind` prop**。它实际靠 `route.path.split('/').pop()` 兜底取值（`/portal/roles` → `roles`，`/portal/organization` → `organization`），**目前能正常工作是偶然**——一旦路径末尾与角色判定不一致就会判错分支，且路由里声明的 `props` 是无效代码。
-7. **分页不统一**。`TablePager` 虽已被 18 个文件引用（是全工程复用度第二高的共享组件），但三个页面绕开了它：`views/MaterialView.vue` 写死 `page:1, size:20` 且表尾只有一行「共 N 条记录」（**超过 20 条物料就无法翻页**）；`views/BusinessWorkspaceView.vue` 一次请求 `size:50` 且只显示 `rows.length`（表头「共 N 条」实际是**当前页条数**，不是总数）。此外 `ReferenceDataView.vue`（MDM 五类基础字典）调的是 `GET /mdm/reference/{kind}`，**接口不分页、返回全量数组**，页面上也没有分页控件——字典量小时无妨，量大时会一次性铺满整屏。
+6. ~~**`ReferenceAdminView.vue` 读 `route.meta.kind` 却未声明 `kind` prop**~~ **已修复（2026-09-22）**——已正确声明并读取路由传入的 prop，未知取值会告警。原问题：它实际靠 `route.path.split('/').pop()` 兜底取值（`/portal/roles` → `roles`，`/portal/organization` → `organization`），**目前能正常工作是偶然**——一旦路径末尾与角色判定不一致就会判错分支，且路由里声明的 `props` 是无效代码。
+7. **分页不统一**。`TablePager` 虽已被 18 个文件引用（是全工程复用度第二高的共享组件），**其中 2 个页面已于 2026-09-22 修复**：`MaterialView.vue` 与 `BusinessWorkspaceView.vue` 均已接入 `TablePager`，后者改为读取 `totalElements` 并在切域时重置页码。此外 `ReferenceDataView.vue`（MDM 五类基础字典）调的是 `GET /mdm/reference/{kind}`，**接口不分页、返回全量数组**，页面上也没有分页控件——字典量小时无妨，量大时会一次性铺满整屏。
 8. **`P3BusinessView.vue` 的 `cfg` 无兜底**。`p3Catalog[`${system}:${kind}`]` 未命中时 `cfg.value` 为 `undefined`，模板中 `cfg.readonly`、`cfg.columns` 会直接抛错。当前 19 条路由与 19 个配置键**恰好一一对应**，属隐式契约，缺一个键就是白屏。
 9. **列表页动态取列的脆弱性**。`CrmP2View`、`ErpP2View`、`ChangeChainView`、`Customer360View`、`GovernanceView` 都用 `Object.keys(rows[0] || {}).slice(0, 8)` 之类的方式**按接口返回的第一行对象决定列**。优点是后端加字段前端自动显示；缺点是**首行为空即无列、列序由 JSON 键序决定、字段增减会静默改变表格**，且列数被硬截断在 8/9 个。
 

@@ -108,12 +108,39 @@
 
 ### 已修复
 
-以下问题在本次文档整理中一并修复：
+**代码类**（验证：`mvn compile` BUILD SUCCESS、`vue-tsc -b` 通过、`py_compile` 通过）
+
+| 原缺陷 | 修法 | 文件 |
+|---|---|---|
+| #1 BOM 改不了 | `MDM:BOM:UPDATE`（字典中不存在）→ `MDM:BOM:CHANGE`（已定义已授予，且与角色分层设计一致：主管可建不可改） | `mdm/.../controller/BomController.java` |
+| #2 客户 360 报错 | `md_customer_contact`（无建表语句）→ `md_partner_contact WHERE partner_type='CUSTOMER'` | `crm/.../service/CrmP2Service.java` |
+| #4 SRM 状态接口必被拒 | `P3CrudService.sc()` 补 `supplier-quality → eight_d_status` | `shared/common/.../service/P3CrudService.java` |
+| #6 死代码 | 删除 `EngineeringChangeService.implement()`（其实现只是翻状态、不建 MDM 版本，与自身类注释矛盾；完整实现在 `EngineeringChangeChainService`），类注释改为指向后者 | `plm/.../service/EngineeringChangeService.java` |
+| #9 包名不合约定 | `com.mfg.{crm,erp,mdm,plm}.callback` → `...workflow`（5 个类）。共享模块自身的 `com.mfg.workflow.callback` 保留——它是工作流引擎的扩展点 | 5 个文件 |
+| #12 配置注释误导 | 改为说明实际的「单数据源 + 跨库限定名」机制 | `bootstrap/.../application.yml` |
+| #14 事件系统码大小写混存 | P3 侧 `SRM`/`WMS`/`QMS` → 小写，与 `sys_permission.system_code` 的规范一致（`event_type` 的 `QMS.` 前缀保持大写，与 P2 写法一致） | `shared/common/.../P3FlowService.java`、`qms/.../QmsLifecycleService.java` |
+| #19 401 后内存态未清 | 401 分支补清 Pinia store（路由守卫读的是 store 的 token，只清 localStorage 不够——在 `/login` 不跳转的场景下会被守卫弹回 `/portal`）；用动态 import 规避 `http.ts ↔ stores/auth.ts` 的模块级循环依赖 | `apps/web-portal/src/api/http.ts` |
+| #15 死文件 | 删除 `src/views/` 下 5 个无任何路由引用的视图（`DashboardView`/`EcnView`/`EcnWorkspaceView`/`ShellView`/`SystemWorkspaceView`） | 5 个文件 |
+| #16 菜单与路由脱节 | 补齐 **12 条**有页面无入口的菜单项（MDM 5 条参考数据、QMS 抽样方案/CAPA/8D、SRM 质量协同/绩效、WMS 收货/调拨）；`/erp/atp` 原本与 `/erp/sales-orders` 共用 `kind:'sales'`，新增独立 `atp` 配置与专属动作；顺带修正 `/qms/reworks` 的错误标签「返工与CAPA」 | `systemCatalog.ts`、`router/index.ts`、`ErpP2View.vue` |
+| #17 属性契约失效 | `ReferenceAdminView` 此前读 `route.meta.kind`（路由从未设置该 meta），实际靠 path 末段兜底才碰巧可用；改为正确声明并读取路由传入的 `kind` prop，未知取值会告警 | `ReferenceAdminView.vue` |
+| #18 分页不一致 | `MaterialView` 写死 `page=1&size=20` 无法翻页 → 接入 `TablePager`；`BusinessWorkspaceView` 表头「共 N 条」显示的是当前页条数 → 改读 `totalElements`，并补 `TablePager` 与切域重置页码 | 2 个文件 |
+| #21 库数口径 | `01_databases.sql` 与 `mysql8/README.md` 的「20」→ **18**（实测 `CREATE DATABASE` 数） | 2 个文件 |
+| #22 种子数字 | `08_seed_data.sql` 四处「28/29」→ **36**（实测 INSERT 元组数） | 1 个文件 |
+| #23 脚本无法被 CI 判定 | 两个演示脚本补失败时 `sys.exit(1)`；`demo_bom_approval.py` 的「流程未通过」分支原本也只打印不退出 | 2 个文件 |
+
+**文档/基础设施类**（上一轮完成）
 
 - `infra/db-init/README.md` 执行清单漏列 `09`/`10`/`11`（原会导致照文档重建出权限全空的库）——已补全并加了显式警示；
 - `infra/.env.example` 仍是 PostgreSQL 模板——已重写，键名与真实 `.env` 的 `MYSQL_*` / `SRC_*_DB` 对齐；
 - `infra/README.md` 仍描述 PostgreSQL + `docker compose up`——已重写为本机 MySQL 方案；
 - `infra/docker-compose.yml` 与 `infra/dockerfiles/`（依赖文件缺失、`compose up` 必然失败）——已删除。
+
+### 经复核确认「不是缺陷」的条目
+
+- **#7**（`@GetMapping("/{type:ecrs|ecos}")` 缺 `ecns`）：`GET /api/plm/ecns` 被两个 Controller 同时映射，Spring 的「字面量优先」规则使 `EngineeringChangeController` 胜出，**补正则并不会生效**（试改后已回退）。唯一消费者 `ChangeChainView.vue` 的表格是动态列，拿 JPA 实体照常渲染。链服务的 `ecns` 分支属死代码，非用户可见缺陷。
+- **#13**（`SrmP3Controller` 未被跟踪）：已在上一次提交中补入。
+- **#5**（`PLM:PRODUCT:UPDATE` / `PLM:DOCUMENT:UPDATE` 不存在）：三处 `@PreAuthorize` 均带 `or hasRole('ADMIN')` 且含已定义已授予的 `PLM:ECN:CREATE`，ADMIN 与持该码者可用，影响小于原述。
+- 库存流水 `wms_inventory_ledger.source_system` 的大小写：与 `biz_outbox` 是两回事——该列被 `InventoryTransactionService` 用作**幂等比对**，自洽即可用，且存量流水已写为大写，改动反而可能让新旧记录对不上，故有意保留。
 
 ## 文档说明
 

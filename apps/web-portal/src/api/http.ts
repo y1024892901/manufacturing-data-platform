@@ -13,7 +13,16 @@ http.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('mfg_token')
       localStorage.removeItem('mfg_user')
-      if (window.location.pathname !== '/login') window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
+      // 路由守卫读的是 store 里的 token，只清 localStorage 不够：
+      // 在 /login 等不触发跳转的场景下，store 仍持有失效 token，会被守卫弹回 /portal。
+      // 动态 import 是为了避开 http.ts ↔ stores/auth.ts 的模块级循环依赖。
+      Promise.resolve()
+        .then(() => import('../stores/auth'))
+        .then(({ useAuthStore }) => useAuthStore().clearLocal())
+        .catch(() => { /* 忽略：localStorage 已清，跳转照常进行 */ })
+        .finally(() => {
+          if (window.location.pathname !== '/login') window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
+        })
     }
     const message = error.response?.data?.message || error.message || '网络请求失败'
     return Promise.reject(new Error(message))

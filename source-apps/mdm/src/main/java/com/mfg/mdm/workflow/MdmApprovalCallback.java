@@ -1,4 +1,4 @@
-package com.mfg.mdm.callback;
+package com.mfg.mdm.workflow;
 
 import com.mfg.mdm.repo.*;
 import com.mfg.mdm.service.MasterDataService;

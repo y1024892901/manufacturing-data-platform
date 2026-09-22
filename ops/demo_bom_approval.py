@@ -134,6 +134,7 @@ def main():
         print("  ✓ BOM 三级审批全链路走通 —— 四个账号接力完成")
     else:
         print(f"  ✗ 流程未通过，状态异常: {d['status']}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
