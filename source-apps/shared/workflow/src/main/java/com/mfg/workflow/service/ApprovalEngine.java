@@ -48,6 +48,8 @@ public class ApprovalEngine {
     private final WfInstanceRepository instanceRepo;
     private final WfTaskRepository taskRepo;
     private final WfActionLogRepository logRepo;
+    private final WfCcRepository ccRepo;
+    private final com.mfg.security.repo.SysUserRepository userRepo;
 
     /**
      * 审批回调集合，<b>延迟注入</b>。
@@ -165,6 +167,11 @@ public class ApprovalEngine {
 
         log.info("审批同意: {} 在节点【{}】通过，实例={}",
                 me.getRealName(), task.getNodeName(), instance.getInstanceNo());
+
+        if (task.getSourceTaskId() != null && task.getSignMode() != null) {
+            taskRepo.findById(task.getSourceTaskId()).ifPresent(source -> { source.setTaskStatus("PENDING"); taskRepo.save(source); });
+            return instance;
+        }
 
         // 找下一节点
         WfNode next = def.nextNode(task.getNodeSeq());
@@ -320,7 +327,7 @@ public class ApprovalEngine {
         if (me.getRoleCodes().isEmpty()) {
             return List.of();
         }
-        return taskRepo.findMyPending(me.getRoleCodes());
+        return taskRepo.findMyPending(me.getRoleCodes(), me.getUsername());
     }
 
     /** 我的待办数量（首页角标） */
@@ -330,8 +337,12 @@ public class ApprovalEngine {
         if (me.getRoleCodes().isEmpty()) {
             return 0L;
         }
-        return taskRepo.countMyPending(me.getRoleCodes());
+        return taskRepo.countMyPending(me.getRoleCodes(), me.getUsername());
     }
+
+    @Transactional public WfTask transfer(Long taskId,String username,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("转交用户",username));source.complete("TRANSFERRED",reason,me.getUsername());taskRepo.save(source);WfTask target=new WfTask();target.setInstanceId(source.getInstanceId());target.setNodeSeq(source.getNodeSeq());target.setNodeName(source.getNodeName()+"（转交）");target.setApproverRole(source.getApproverRole());target.setAssignedUser(username);target.setSourceTaskId(source.getId());taskRepo.save(target);WfInstance instance=getInstance(source.getInstanceId());logAction(instance.getId(),target.getId(),target.getNodeSeq(),"TRANSFER",me,"转交给"+username+"："+reason,"PENDING","PENDING");return target;}
+    @Transactional public WfTask addSign(Long taskId,String username,String mode,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("加签用户",username));source.setTaskStatus("WAITING");taskRepo.save(source);WfTask sign=new WfTask();sign.setInstanceId(source.getInstanceId());sign.setNodeSeq(source.getNodeSeq());sign.setNodeName(source.getNodeName()+"（加签）");sign.setApproverRole(source.getApproverRole());sign.setAssignedUser(username);sign.setSourceTaskId(source.getId());sign.setSignMode("AFTER".equalsIgnoreCase(mode)?"AFTER":"BEFORE");taskRepo.save(sign);logAction(source.getInstanceId(),sign.getId(),sign.getNodeSeq(),"ADD_SIGN",me,"加签给"+username+"："+reason,"PENDING","WAITING");return sign;}
+    @Transactional public void copyTo(Long instanceId,List<String> users,String reason){LoginUser me=CurrentUser.get();getInstance(instanceId);for(String username:users){userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("抄送用户",username));if(ccRepo.findByInstanceIdAndUsername(instanceId,username).isEmpty()){WfCc cc=new WfCc();cc.setInstanceId(instanceId);cc.setUsername(username);cc.setCreatedBy(me.getUsername());ccRepo.save(cc);}}logAction(instanceId,null,null,"CC",me,reason,"RUNNING","RUNNING");}
 
     /** 审批时间轴 */
     @Transactional(readOnly = true)
@@ -390,7 +401,7 @@ public class ApprovalEngine {
                     "该待办已被处理（当前状态：" + task.getTaskStatus() + "）");
         }
 
-        if (!me.hasRole(task.getApproverRole())) {
+        if (task.getAssignedUser() != null ? !task.getAssignedUser().equals(me.getUsername()) : !me.hasRole(task.getApproverRole())) {
             throw BizException.of(ErrorCode.WORKFLOW_NOT_YOUR_TASK,
                     "该待办需要【" + task.getApproverRole() + "】角色，当前用户无此权限");
         }

@@ -31,7 +31,9 @@ public class MdmApprovalCallback implements ApprovalCallback {
     private final CustomerRepository customerRepo;
     private final SupplierRepository supplierRepo;
     private final MaterialRepository materialRepo;
+    private final ProductRepository productRepo;
     private final BomRepository bomRepo;
+    private final RoutingRepository routingRepo;
     private final BomService bomService;
 
     @Override
@@ -53,8 +55,10 @@ public class MdmApprovalCallback implements ApprovalCallback {
         var results = switch (bizType) {
             case "CUSTOMER" -> publishIfExists(bizType, bizId, customerRepo);
             case "SUPPLIER" -> publishIfExists(bizType, bizId, supplierRepo);
-            case "MATERIAL", "PRODUCT" -> publishIfExists(bizType, bizId, materialRepo);
-            case "BOM", "ROUTING" -> publishIfExists(bizType, bizId, bomRepo);
+            case "MATERIAL" -> publishIfExists(bizType, bizId, materialRepo);
+            case "PRODUCT" -> publishIfExists(bizType, bizId, productRepo);
+            case "BOM" -> publishIfExists(bizType, bizId, bomRepo);
+            case "ROUTING" -> publishIfExists(bizType, bizId, routingRepo);
             default -> java.util.List.<com.mfg.mdm.service.MasterDataDistributor.DistResult>of();
         };
 
@@ -82,8 +86,10 @@ public class MdmApprovalCallback implements ApprovalCallback {
         switch (bizType) {
             case "CUSTOMER" -> rejectIfExists(bizType, bizId, customerRepo, reason);
             case "SUPPLIER" -> rejectIfExists(bizType, bizId, supplierRepo, reason);
-            case "MATERIAL", "PRODUCT" -> rejectIfExists(bizType, bizId, materialRepo, reason);
-            case "BOM", "ROUTING" -> rejectIfExists(bizType, bizId, bomRepo, reason);
+            case "MATERIAL" -> rejectIfExists(bizType, bizId, materialRepo, reason);
+            case "PRODUCT" -> rejectIfExists(bizType, bizId, productRepo, reason);
+            case "BOM" -> rejectIfExists(bizType, bizId, bomRepo, reason);
+            case "ROUTING" -> rejectIfExists(bizType, bizId, routingRepo, reason);
             default -> log.debug("未处理的业务类型: {}", bizType);
         }
     }

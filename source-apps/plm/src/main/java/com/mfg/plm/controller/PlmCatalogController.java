@@ -1,0 +1,8 @@
+package com.mfg.plm.controller;
+import com.mfg.common.api.ApiResponse;import com.mfg.plm.service.PlmCatalogService;import lombok.RequiredArgsConstructor;import org.springframework.data.domain.Page;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.util.Map;
+@RestController @RequestMapping("/api/plm/catalog") @RequiredArgsConstructor public class PlmCatalogController{private final PlmCatalogService service;
+ @GetMapping("/{type}")public ApiResponse<Page<Map<String,Object>>> page(@PathVariable String type,@RequestParam(required=false)String keyword,@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){return ApiResponse.ok(service.page(type,keyword,page,size));}
+ @PostMapping("/{type}")@PreAuthorize("hasAnyAuthority('PLM:PRODUCT:UPDATE','PLM:DOCUMENT:UPDATE','PLM:ECN:CREATE') or hasRole('ADMIN')")public ApiResponse<Map<String,Object>> create(@PathVariable String type,@RequestBody Map<String,Object>x){return ApiResponse.ok(service.create(type,x));}
+ @PutMapping("/{type}/{id}")@PreAuthorize("hasAnyAuthority('PLM:PRODUCT:UPDATE','PLM:DOCUMENT:UPDATE','PLM:ECN:CREATE') or hasRole('ADMIN')")public ApiResponse<Map<String,Object>> update(@PathVariable String type,@PathVariable Long id,@RequestBody Map<String,Object>x){return ApiResponse.ok(service.update(type,id,x));}
+ @PostMapping("/{type}/{id}/release")@PreAuthorize("hasAnyAuthority('PLM:PRODUCT:UPDATE','PLM:DOCUMENT:UPDATE','PLM:ECN:CREATE') or hasRole('ADMIN')")public ApiResponse<Map<String,Object>> release(@PathVariable String type,@PathVariable Long id){return ApiResponse.ok(service.release(type,id));}
+}

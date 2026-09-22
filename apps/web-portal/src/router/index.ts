@@ -22,15 +22,22 @@ const routes: RouteRecordRaw[] = [
     { path: 'users', component: () => import('../modules/platform/UserAdminView.vue'), meta: { admin: true } },
     { path: 'roles', component: () => import('../modules/platform/ReferenceAdminView.vue'), props: { kind: 'roles' }, meta: { admin: true } },
     { path: 'organization', component: () => import('../modules/platform/ReferenceAdminView.vue'), props: { kind: 'organization' }, meta: { admin: true } },
-    // { path: 'approval', component: () => import('../views/ApprovalCenterView.vue') },
+    { path: 'approval', component: () => import('../views/ApprovalCenterView.vue') },
     { path: 'events', component: () => import('../modules/platform/EventMonitorView.vue') },
     { path: 'audit', component: () => import('../modules/platform/AuditLogView.vue'), meta: { admin: true } },
     { path: 'operations', component: () => import('../views/OperationsView.vue') }
   ] },
   systemRoute('mdm', () => import('../modules/mdm/HomeView.vue'), [
     { path: 'materials', component: () => import('../views/MaterialView.vue') },
+    { path: 'products', component: () => import('../modules/mdm/ProductView.vue') },
     { path: 'boms', component: () => import('../views/BomView.vue') },
-    workspace('customers', 'mdmCustomers'), workspace('suppliers', 'mdmSuppliers'),
+    { path: 'routings', component: () => import('../modules/mdm/RoutingView.vue') },
+    { path: 'customers', component: () => import('../modules/mdm/PartnerView.vue'), props: { kind: 'customers' } },
+    { path: 'suppliers', component: () => import('../modules/mdm/PartnerView.vue'), props: { kind: 'suppliers' } },
+    { path: 'warehouses', component: () => import('../modules/mdm/MdmResourceView.vue'), props: { kind: 'warehouses' } },
+    { path: 'work-centers', component: () => import('../modules/mdm/MdmResourceView.vue'), props: { kind: 'work-centers' } },
+    { path: 'production-versions', component: () => import('../modules/mdm/MdmResourceView.vue'), props: { kind: 'production-versions' } },
+    { path: 'governance', component: () => import('../modules/mdm/GovernanceView.vue') },
     { path: 'categories', component: () => import('../modules/mdm/ReferenceDataView.vue'), props: { kind: 'categories' } },
     { path: 'units', component: () => import('../modules/mdm/ReferenceDataView.vue'), props: { kind: 'units' } },
     { path: 'organizations', component: () => import('../modules/mdm/ReferenceDataView.vue'), props: { kind: 'organizations' } },
@@ -38,30 +45,46 @@ const routes: RouteRecordRaw[] = [
     { path: 'subjects', component: () => import('../modules/mdm/ReferenceDataView.vue'), props: { kind: 'subjects' } }
   ]),
   systemRoute('crm', () => import('../modules/crm/HomeView.vue'), [
-    placeholder('customers', '客户 360', '汇总客户画像、联系人、交易、回款、服务和风险。', ['客户画像', '联系人', '交易历史', '信用风险']),
-    placeholder('leads', '销售线索', '完成线索登记、分配、跟进、评分和转商机。', ['线索池', '分配', '跟进', '转商机']),
-    workspace('opportunities', 'crm'),
-    placeholder('quotations', '报价与合同', '管理价格版本、折扣审批、合同、回款计划和变更。', ['报价版本', '折扣审批', '销售合同', '回款计划'])
+    { path:'customers',component:()=>import('../modules/crm/Customer360View.vue') },
+    { path:'leads',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'leads'} },
+    { path:'opportunities',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'opportunities'} },
+    { path:'quotations',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'quotations'} },
+    { path:'contracts',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'contracts'} },
+    { path:'forecast',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'forecast'} },
+    { path:'complaints',component:()=>import('../modules/crm/CrmP2View.vue'),props:{kind:'complaints'} }
   ]),
   systemRoute('erp', () => import('../modules/erp/HomeView.vue'), [
-    workspace('sales-orders', 'erp'), workspace('production-orders', 'production'),
-    placeholder('mrp', 'MRP 与齐套计划', '根据销售需求、库存、BOM 和在途计算净需求。', ['净需求', '采购建议', '生产建议', '齐套检查']),
-    workspace('vouchers', 'erpFinance')
+    { path:'sales-orders',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'sales'} },
+    { path:'credits',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'credits'} },
+    { path:'atp',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'sales'} },
+    { path:'mrp',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'mrp'} },
+    { path:'suggestions',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'suggestions'} },
+    { path:'production-orders',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'production'} },
+    { path:'receivables',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'receivables'} },
+    { path:'invoices',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'invoices'} },
+    { path:'receipts',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'receipts'} },
+    { path:'payables',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'payables'} },
+    { path:'vouchers',component:()=>import('../modules/erp/ErpP2View.vue'),props:{kind:'vouchers'} },
+    { path:'margins',component:()=>import('../modules/erp/MarginView.vue') }
   ]),
   systemRoute('plm', () => import('../modules/plm/HomeView.vue'), [
-    placeholder('products', '产品族与产品版本', '管理产品族、产品版本、生命周期和工程基线。', ['产品族', '产品版本', '生命周期', '工程基线']),
-    placeholder('boms', 'EBOM / MBOM', '维护设计 BOM、制造 BOM、差异转换和版本比较。', ['EBOM', 'MBOM', '版本比较', '差异转换']),
-    { path: 'ecns', component: () => import('../views/EcnWorkspaceView.vue') },
-    placeholder('documents', '图纸与受控文档', '管理图纸、工艺卡、作业指导书和受控发布。', ['图纸', '工艺卡', '作业指导书', '版本受控'])
+    { path: 'families', component: () => import('../modules/plm/PlmCatalogView.vue'), props: { kind: 'families' } },
+    { path: 'products', component: () => import('../modules/plm/PlmCatalogView.vue'), props: { kind: 'versions' } },
+    { path: 'baselines', component: () => import('../modules/plm/PlmCatalogView.vue'), props: { kind: 'baselines' } },
+    { path: 'boms', component: () => import('../modules/plm/PlmBomView.vue') },
+    { path: 'ecns', component: () => import('../modules/plm/ChangeChainView.vue') },
+    { path: 'documents', component: () => import('../modules/plm/PlmCatalogView.vue'), props: { kind: 'documents' } }
   ]),
   systemRoute('srm', () => import('../modules/srm/HomeView.vue'), [
-    placeholder('onboarding', '供应商准入', '管理资质、认证、现场审核、黑名单和准入审批。', ['资质档案', '认证', '现场审核', '黑名单']),
-    placeholder('rfq', '询报价与定标', '完成 RFQ、供应商报价、比价、澄清和定标。', ['RFQ', '报价', '比价', '定标']),
-    workspace('purchase-orders', 'srmPo'), workspace('deliveries', 'srmDelivery')
+    {path:'onboarding',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'onboarding',title:'供应商准入'}},
+    {path:'rfq',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'rfqs',title:'询报价与定标'}},
+    {path:'purchase-orders',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'purchase-orders',title:'采购订单'}},
+    {path:'deliveries',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'asns',title:'ASN到货协同'}},
+    {path:'quality',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'supplier-quality',title:'供应商质量'}},
+    {path:'performance',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'srm',kind:'performance',title:'供应商绩效'}}
   ]),
   systemRoute('wms', () => import('../modules/wms/HomeView.vue'), [
-    workspace('locations', 'wmsLocations'), workspace('inventory', 'wmsInventory'), workspace('transactions', 'wmsTxn'),
-    placeholder('counting', '盘点与库存调整', '生成盘点任务，复核差异并形成盘盈盘亏流水。', ['盘点任务', '扫码实盘', '差异复核', '库存调整'])
+    {path:'locations',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'putaway',title:'库位与上架'}},{path:'receipts',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'receipts',title:'收货待检'}},{path:'inventory',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'inventories',title:'库存余额'}},{path:'transactions',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'inventory-actions',title:'库存状态操作'}},{path:'transfers',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'transfers',title:'库存调拨'}},{path:'counting',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'wms',kind:'counts',title:'盘点作业'}}
   ]),
   systemRoute('mes', () => import('../modules/mes/HomeView.vue'), [
     workspace('work-orders', 'mes'),
@@ -70,8 +93,7 @@ const routes: RouteRecordRaw[] = [
     placeholder('andon', 'Andon 异常', '登记缺料、质量、设备和安全异常并跟踪闭环。', ['异常呼叫', '响应', '停线影响', '闭环'])
   ]),
   systemRoute('qms', () => import('../modules/qms/HomeView.vue'), [
-    placeholder('standards', '检验标准', '维护检验项目、AQL、抽样方案和判定规则。', ['检验项目', 'AQL', '抽样方案', '判定规则']),
-    workspace('inspections', 'qms'), workspace('defects', 'qmsDefect'), workspace('reworks', 'qmsRework')
+    {path:'standards',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'standards',title:'检验标准'}},{path:'sampling',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'sampling-plans',title:'抽样方案'}},{path:'inspections',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'inspections',title:'质量检验'}},{path:'defects',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'ncrs',title:'不合格评审'}},{path:'reworks',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'reworks',title:'返工作业'}},{path:'capas',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'capas',title:'CAPA'}},{path:'8d',component:()=>import('../shared/components/P3BusinessView.vue'),props:{system:'qms',kind:'8d',title:'供应商8D'}}
   ]),
   systemRoute('eam', () => import('../modules/eam/HomeView.vue'), [
     workspace('equipments', 'eamEquipment'), workspace('inspections', 'eamInspection'), workspace('faults', 'eamFault'), workspace('repairs', 'eamRepair')

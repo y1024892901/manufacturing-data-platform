@@ -5,6 +5,7 @@ import com.mfg.workflow.dto.PendingTaskView;
 import com.mfg.workflow.dto.TimelineItem;
 import com.mfg.workflow.entity.WfDefinition;
 import com.mfg.workflow.entity.WfInstance;
+import com.mfg.workflow.entity.WfTask;
 import com.mfg.workflow.repo.WfDefinitionRepository;
 import com.mfg.workflow.service.ApprovalEngine;
 import com.mfg.workflow.service.WorkflowQueryService;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +40,7 @@ public class WorkflowController {
     private final ApprovalEngine engine;
     private final WorkflowQueryService queryService;
     private final WfDefinitionRepository definitionRepo;
+    private final com.mfg.workflow.repo.WfCcRepository ccRepo;
 
     // ---------- 待办 ----------
 
@@ -157,4 +160,9 @@ public class WorkflowController {
     /** 审批意见请求体 */
     public record OpinionRequest(String opinion) {
     }
+    @PostMapping("/tasks/{taskId}/transfer") public ApiResponse<WfTask> transfer(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.transfer(taskId,body.username(),body.reason()));}
+    @PostMapping("/tasks/{taskId}/add-sign") public ApiResponse<WfTask> addSign(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.addSign(taskId,body.username(),body.mode(),body.reason()));}
+    @PostMapping("/instances/{instanceId}/cc") public ApiResponse<Void> cc(@PathVariable Long instanceId,@RequestBody CopyRequest body){engine.copyTo(instanceId,body.usernames(),body.reason());return ApiResponse.ok();}
+    @GetMapping("/tasks/copied") public ApiResponse<Page<com.mfg.workflow.entity.WfCc>> copied(@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){return ApiResponse.ok(ccRepo.findByUsernameOrderByIdDesc(com.mfg.security.config.CurrentUser.get().getUsername(),PageRequest.of(Math.max(0,page-1),Math.min(200,Math.max(1,size)))));}
+    public record AssignmentRequest(String username,String mode,String reason){} public record CopyRequest(List<String> usernames,String reason){}
 }

@@ -82,6 +82,7 @@ public class MaterialController {
         List<Map<String, Object>> list = repo.findConsumable().stream()
                 .map(m -> {
                     Map<String, Object> v = new LinkedHashMap<>();
+                    v.put("id", m.getId());
                     v.put("materialCode", m.getMaterialCode());
                     v.put("materialName", m.getMaterialName());
                     v.put("materialSpec", m.getMaterialSpec());

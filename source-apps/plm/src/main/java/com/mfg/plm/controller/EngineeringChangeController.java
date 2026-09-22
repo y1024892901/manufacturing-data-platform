@@ -6,5 +6,4 @@ import com.mfg.common.api.ApiResponse;import com.mfg.plm.entity.EngineeringChang
  @GetMapping("/{id}")public ApiResponse<EngineeringChange> detail(@PathVariable Long id){return ApiResponse.ok(repo.findById(id).orElseThrow(()->new jakarta.persistence.EntityNotFoundException("ECN不存在")));}
  @PostMapping @PreAuthorize("hasAuthority('PLM:ECN:CREATE')")public ApiResponse<EngineeringChange> create(@RequestBody EngineeringChange e){return ApiResponse.ok(service.create(e));}
  @PostMapping("/{id}/submit") @PreAuthorize("hasAuthority('PLM:ECN:CREATE')")public ApiResponse<com.mfg.workflow.entity.WfInstance> submit(@PathVariable Long id){return ApiResponse.ok(service.submit(id));}
- @PostMapping("/{id}/implement") @PreAuthorize("hasAuthority('PLM:ECN:CREATE')")public ApiResponse<EngineeringChange> implement(@PathVariable Long id){return ApiResponse.ok(service.implement(id));}
 }

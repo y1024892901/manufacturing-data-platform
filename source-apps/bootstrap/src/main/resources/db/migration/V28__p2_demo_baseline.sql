@@ -1,0 +1,6 @@
+INSERT IGNORE INTO src_mdm.md_customer(customer_code,customer_name,customer_level,credit_limit,credit_used,status,version_no,created_by) VALUES('C-DEMO-001','华东智能装备有限公司','A',1000000,0,'PUBLISHED',1,'system');
+INSERT IGNORE INTO src_mdm.md_supplier(supplier_code,supplier_name,supplier_level,lead_time_days,qual_status,status,version_no,created_by) VALUES('S-DEMO-001','精工材料供应有限公司','A',7,'QUALIFIED','PUBLISHED',1,'system');
+INSERT IGNORE INTO src_mdm.md_product(product_code,product_name,product_model,lifecycle_status,status,version_no,created_by) VALUES('P-DEMO-001','智能装配终端','MFG-X1','MASS','PUBLISHED',1,'system');
+INSERT IGNORE INTO src_mdm.md_material(material_code,material_name,material_type,base_unit_code,safety_stock,status,version_no,created_by) VALUES('P-DEMO-001','智能装配终端','FG','PCS',5,'PUBLISHED',1,'system'),('M-DEMO-001','精密控制板','PURCHASE','PCS',20,'PUBLISHED',1,'system');
+INSERT IGNORE INTO src_erp.erp_supply_snapshot(material_code,factory_code,supply_date,available_stock,confirmed_purchase,planned_production,allocated_demand) VALUES('P-DEMO-001','F001',CURRENT_DATE,100,0,0,0),('M-DEMO-001','F001',CURRENT_DATE,200,100,0,0);
+INSERT IGNORE INTO src_erp.erp_customer_credit(customer_code,credit_limit,used_amount,overdue_amount,payment_days,risk_level,status) VALUES('C-DEMO-001',1000000,0,0,30,'LOW','ACTIVE');

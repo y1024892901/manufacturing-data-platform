@@ -13,6 +13,10 @@ async function load() {
     health.value = healthResult.data.data
     databases.value = databaseResult.data.data.content
     total.value = databaseResult.data.data.totalElements
+    if (!databases.value.length && total.value > 0 && page.value > 1) {
+      page.value--
+      await load()
+    }
   } finally { loading.value = false }
 }
 onMounted(load)

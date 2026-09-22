@@ -16,6 +16,7 @@
     <description>检验单、不合格品、返工</description>
 
     <dependencies>
+        <dependency><groupId>com.mfg</groupId><artifactId>app-wms</artifactId></dependency>
         <dependency>
             <groupId>com.mfg</groupId>
             <artifactId>shared-common</artifactId>

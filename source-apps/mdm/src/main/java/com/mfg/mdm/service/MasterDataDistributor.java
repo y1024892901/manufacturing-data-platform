@@ -157,6 +157,15 @@ public class MasterDataDistributor {
                     m.getMaterialType(), m.getBaseUnitCode(), m.getStandardPrice(),
                     m.getSafetyStock(), m.getVersionNo(), LocalDateTime.now());
         }
+        if (e instanceof Product p) {
+            return jdbc.update("""
+                    INSERT INTO src_erp.erp_md_product
+                        (product_code, product_name, product_model, lifecycle_status, master_version, synced_at)
+                    VALUES (?,?,?,?,?,?)
+                    ON DUPLICATE KEY UPDATE product_name=VALUES(product_name),product_model=VALUES(product_model),
+                        lifecycle_status=VALUES(lifecycle_status),master_version=VALUES(master_version),synced_at=VALUES(synced_at)
+                    """, p.getProductCode(), p.getProductName(), p.getProductModel(), p.getLifecycleStatus(), p.getVersionNo(), LocalDateTime.now());
+        }
         if (e instanceof Bom b) {
             // ERP 的 BOM 副本：头 + 行都要写，因为 ERP 要用它算料
             int rows = jdbc.update("""
@@ -228,6 +237,26 @@ public class MasterDataDistributor {
                     m.getPurchaseUnitCode(), m.getConversionRate(), m.getStandardPrice(),
                     m.getVersionNo(), LocalDateTime.now());
         }
+        if (e instanceof Product p) {
+            return jdbc.update("""
+                    INSERT INTO src_plm.plm_md_product
+                        (product_code, product_name, product_model, lifecycle_status, master_version, synced_at)
+                    VALUES (?,?,?,?,?,?)
+                    ON DUPLICATE KEY UPDATE product_name=VALUES(product_name),product_model=VALUES(product_model),
+                        lifecycle_status=VALUES(lifecycle_status),master_version=VALUES(master_version),synced_at=VALUES(synced_at)
+                    """, p.getProductCode(), p.getProductName(), p.getProductModel(), p.getLifecycleStatus(), p.getVersionNo(), LocalDateTime.now());
+        }
+        if (e instanceof Routing r) {
+            int rows = jdbc.update("""
+                    INSERT INTO src_plm.plm_md_routing
+                        (routing_code,routing_version,routing_name,product_code,effective_date,master_version,synced_at)
+                    VALUES (?,?,?,?,?,?,?)
+                    ON DUPLICATE KEY UPDATE routing_name=VALUES(routing_name),product_code=VALUES(product_code),
+                        effective_date=VALUES(effective_date),master_version=VALUES(master_version),synced_at=VALUES(synced_at)
+                    """, r.getRoutingCode(), r.getRoutingVersion(), r.getRoutingName(), r.getProductCode(), r.getEffectiveDate(), r.getVersionNo(), LocalDateTime.now());
+            rows += writeRoutingOperations(r, "src_plm.plm_md_routing_operation");
+            return rows;
+        }
         return 0;
     }
 
@@ -291,7 +320,22 @@ public class MasterDataDistributor {
                     """, m.getMaterialCode(), m.getMaterialName(), m.getBaseUnitCode(),
                     m.getVersionNo(), LocalDateTime.now());
         }
+        if (e instanceof Routing r) {
+            return writeRoutingOperations(r, "src_mes.mes_md_routing_operation");
+        }
         return 0;
+    }
+
+    private int writeRoutingOperations(Routing routing, String targetTable) {
+        List<java.util.Map<String, Object>> operations = jdbc.queryForList(
+                "SELECT * FROM src_mdm.md_routing_operation WHERE routing_id=? ORDER BY op_seq", routing.getId());
+        jdbc.update("DELETE FROM " + targetTable + " WHERE routing_code=? AND routing_version=?", routing.getRoutingCode(), routing.getRoutingVersion());
+        int rows = 0;
+        for (var op : operations) {
+            rows += jdbc.update("INSERT INTO " + targetTable + " (routing_code,routing_version,op_seq,operation_code,operation_name,work_center,setup_time_min,run_time_min,default_equipment_code,is_key_operation,is_inspection_op,master_version,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    routing.getRoutingCode(), routing.getRoutingVersion(), op.get("op_seq"), op.get("operation_code"), op.get("operation_name"), op.get("work_center"), op.get("setup_time_min"), op.get("run_time_min"), op.get("default_equipment_code"), op.get("is_key_operation"), op.get("is_inspection_op"), routing.getVersionNo(), LocalDateTime.now());
+        }
+        return rows;
     }
 
     /** WMS：接收物料（库存与齐套）*/

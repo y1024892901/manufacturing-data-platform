@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,6 +37,7 @@ import java.util.List;
 @SpringBootApplication(scanBasePackages = "com.mfg")
 @EntityScan(basePackages = "com.mfg")
 @EnableJpaRepositories(basePackages = "com.mfg")
+@EnableScheduling
 public class MfgSourceApplication {
 
     public static void main(String[] args) {

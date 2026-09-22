@@ -1,0 +1,3 @@
+CREATE TABLE src_qms.qms_standard(id BIGINT AUTO_INCREMENT PRIMARY KEY,standard_code VARCHAR(32) UNIQUE,standard_name VARCHAR(200),inspection_type VARCHAR(16),material_code VARCHAR(32),version_no INT DEFAULT 1,status VARCHAR(16) DEFAULT 'DRAFT',aql_level VARCHAR(16),created_by VARCHAR(32));
+CREATE TABLE src_qms.qms_standard_item(id BIGINT AUTO_INCREMENT PRIMARY KEY,standard_id BIGINT,item_code VARCHAR(32),item_name VARCHAR(100),lower_limit DECIMAL(18,6),upper_limit DECIMAL(18,6),unit_code VARCHAR(16),required_flag TINYINT(1) DEFAULT 1);
+CREATE TABLE src_qms.qms_sampling_plan(id BIGINT AUTO_INCREMENT PRIMARY KEY,plan_code VARCHAR(32) UNIQUE,plan_name VARCHAR(100),lot_min INT,lot_max INT,sample_size INT,accept_qty INT,reject_qty INT,status VARCHAR(16) DEFAULT 'ACTIVE');

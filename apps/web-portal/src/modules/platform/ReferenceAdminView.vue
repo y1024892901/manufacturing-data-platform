@@ -35,6 +35,10 @@ async function load() {
       total.value = result.data.data.totalElements
       departmentOptions.value = options.data.data
     }
+    if (!rows.value.length && total.value > 0 && page.value > 1) {
+      page.value--
+      await load()
+    }
   } finally { loading.value = false }
 }
 
@@ -59,6 +63,7 @@ function edit(row: any) {
 }
 
 async function save() {
+  const creating = editingId.value === null
   saving.value = true
   try {
     const base = isRole.value ? '/admin/roles' : '/admin/departments'
@@ -66,6 +71,7 @@ async function save() {
     else await http.post(base, form)
     ElMessage.success(editingId.value ? '修改已保存' : '记录已创建')
     dialog.value = false
+    if (creating) page.value = 1
     await load()
   } catch (error: any) { ElMessage.error(error.message || '保存失败') }
   finally { saving.value = false }

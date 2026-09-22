@@ -27,26 +27,26 @@ public interface WfTaskRepository extends JpaRepository<WfTask, Long> {
     @Query("""
             SELECT t FROM WfTask t
             WHERE t.taskStatus = 'PENDING'
-              AND t.approverRole IN :roles
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
             ORDER BY t.createdAt ASC
             """)
-    List<WfTask> findMyPending(@Param("roles") Collection<String> roles);
+    List<WfTask> findMyPending(@Param("roles") Collection<String> roles, @Param("username") String username);
 
     @Query("""
             SELECT t FROM WfTask t
             WHERE t.taskStatus = 'PENDING'
-              AND t.approverRole IN :roles
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
             ORDER BY t.createdAt ASC
             """)
-    Page<WfTask> findMyPendingPaged(@Param("roles") Collection<String> roles, Pageable pageable);
+    Page<WfTask> findMyPendingPaged(@Param("roles") Collection<String> roles, @Param("username") String username, Pageable pageable);
 
     /** 待办数量（首页角标用，避免拉全量数据） */
     @Query("""
             SELECT COUNT(t) FROM WfTask t
             WHERE t.taskStatus = 'PENDING'
-              AND t.approverRole IN :roles
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
             """)
-    long countMyPending(@Param("roles") Collection<String> roles);
+    long countMyPending(@Param("roles") Collection<String> roles, @Param("username") String username);
 
     /** 我已处理过的任务 */
     @Query("""

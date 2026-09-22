@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS src_plm.plm_product_family (
+    id BIGINT NOT NULL AUTO_INCREMENT, family_code VARCHAR(32) NOT NULL, family_name VARCHAR(200) NOT NULL,
+    market_segment VARCHAR(100) NULL, owner_user VARCHAR(32) NULL, status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(id), UNIQUE KEY uk_plm_family_code(family_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS src_plm.plm_product_version (
+    id BIGINT NOT NULL AUTO_INCREMENT, product_code VARCHAR(32) NOT NULL, version_no VARCHAR(16) NOT NULL,
+    version_name VARCHAR(200) NULL, lifecycle_status VARCHAR(16) NOT NULL DEFAULT 'DESIGN', baseline_no VARCHAR(32) NULL,
+    effective_date DATE NULL, status VARCHAR(16) NOT NULL DEFAULT 'DRAFT', created_by VARCHAR(32) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(id), UNIQUE KEY uk_plm_product_version(product_code,version_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS src_plm.plm_document (
+    id BIGINT NOT NULL AUTO_INCREMENT, doc_no VARCHAR(32) NOT NULL, doc_name VARCHAR(200) NOT NULL,
+    doc_type VARCHAR(32) NOT NULL, version_no VARCHAR(16) NOT NULL DEFAULT 'V1.0', product_code VARCHAR(32) NULL,
+    file_name VARCHAR(255) NULL, confidentiality VARCHAR(16) NOT NULL DEFAULT 'INTERNAL', status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+    created_by VARCHAR(32) NULL, released_by VARCHAR(32) NULL, released_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(id), UNIQUE KEY uk_plm_document_version(doc_no,version_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS src_plm.plm_engineering_baseline (
+    id BIGINT NOT NULL AUTO_INCREMENT, baseline_no VARCHAR(32) NOT NULL, baseline_name VARCHAR(200) NOT NULL,
+    product_code VARCHAR(32) NOT NULL, product_version VARCHAR(16) NOT NULL, bom_code VARCHAR(32) NULL,
+    bom_version VARCHAR(16) NULL, routing_code VARCHAR(32) NULL, routing_version VARCHAR(16) NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'DRAFT', created_by VARCHAR(32) NULL, released_by VARCHAR(32) NULL, released_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(id), UNIQUE KEY uk_plm_baseline_no(baseline_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

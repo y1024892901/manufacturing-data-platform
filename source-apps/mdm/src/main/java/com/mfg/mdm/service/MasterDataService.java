@@ -41,6 +41,7 @@ public class MasterDataService {
 
     private final ApprovalEngine approvalEngine;
     private final MasterDataDistributor distributor;
+    private final MdmOutboxService outboxService;
     private final ObjectMapper objectMapper;
 
     // ============================================================
@@ -173,8 +174,9 @@ public class MasterDataService {
         log.info("主数据已发布: {} [{}] 版本={}",
                 entity.bizType().getLabel(), entity.getBusinessCode(), entity.getVersionNo());
 
-        // 发布后立即分发——演示时"审批通过 → ERP 立刻能选到这个物料"
-        return distributor.distribute(entity);
+        // 与业务更新同事务写 Outbox；后台分发器在 1 秒内推送到各目标系统。
+        outboxService.enqueue(entity);
+        return java.util.List.of();
     }
 
     /**

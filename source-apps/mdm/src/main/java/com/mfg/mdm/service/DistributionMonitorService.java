@@ -22,9 +22,11 @@ public class DistributionMonitorService {
     private final JdbcTemplate jdbc;
     private final MasterDataDistributor distributor;
     private final MaterialRepository materials;
+    private final com.mfg.mdm.repo.ProductRepository products;
     private final CustomerRepository customers;
     private final SupplierRepository suppliers;
     private final BomRepository boms;
+    private final com.mfg.mdm.repo.RoutingRepository routings;
 
     @Transactional(readOnly = true)
     public Page<Map<String, Object>> latest(String status, int page, int size) {
@@ -59,12 +61,15 @@ public class DistributionMonitorService {
 
     private MasterDataEntity resolve(String type, String code, int version) {
         return switch (type) {
-            case "MATERIAL", "PRODUCT" -> materials.findByMaterialCode(code).orElseThrow(() -> BizException.notFound("物料", code));
+            case "MATERIAL" -> materials.findByMaterialCode(code).orElseThrow(() -> BizException.notFound("物料", code));
+            case "PRODUCT" -> products.findByProductCode(code).orElseThrow(() -> BizException.notFound("产品", code));
             case "CUSTOMER" -> customers.findByCustomerCode(code).orElseThrow(() -> BizException.notFound("客户", code));
             case "SUPPLIER" -> suppliers.findBySupplierCode(code).orElseThrow(() -> BizException.notFound("供应商", code));
             case "BOM" -> boms.findByBomCodeOrderByBomVersionDesc(code).stream()
                     .filter(item -> item.getVersionNo() != null && item.getVersionNo() == version).findFirst()
                     .orElseThrow(() -> BizException.notFound("BOM", code));
+            case "ROUTING" -> routings.findAll().stream().filter(item -> item.getRoutingCode().equals(code) && item.getVersionNo() == version)
+                    .findFirst().orElseThrow(() -> BizException.notFound("工艺路线", code));
             default -> throw BizException.conflict("当前主数据类型暂不支持手工重试: " + type);
         };
     }

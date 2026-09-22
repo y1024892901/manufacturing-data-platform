@@ -11,6 +11,7 @@ import org.springframework.data.domain.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.math.BigDecimal;
 /** BOM 的唯一维护入口；ERP、MES 只能消费已经发布的版本。 */
 @RestController @RequestMapping("/api/mdm/boms") @RequiredArgsConstructor public class BomController{
  private final BomRepository repo;private final BomService service;
@@ -20,4 +21,8 @@ import java.util.List;
  @PostMapping @PreAuthorize("hasAuthority('MDM:BOM:CREATE')")public ApiResponse<Bom> create(@Valid @RequestBody BomCommand c){return ApiResponse.ok(service.create(c));}
  @PutMapping("/{id}") @PreAuthorize("hasAuthority('MDM:BOM:UPDATE')")public ApiResponse<Bom> update(@PathVariable Long id,@Valid @RequestBody BomCommand c){return ApiResponse.ok(service.update(id,c));}
  @PostMapping("/{id}/submit") @PreAuthorize("hasAuthority('MDM:BOM:CREATE')")public ApiResponse<WfInstance> submit(@PathVariable Long id){return ApiResponse.ok(service.submit(id));}
+ @GetMapping("/{bomId}/lines/{lineId}/substitutes") public ApiResponse<List<com.mfg.mdm.entity.BomSubstitute>> substitutes(@PathVariable Long bomId,@PathVariable Long lineId){return ApiResponse.ok(service.substitutes(bomId,lineId));}
+ @PostMapping("/{bomId}/lines/{lineId}/substitutes") @PreAuthorize("hasAuthority('MDM:BOM:UPDATE')") public ApiResponse<com.mfg.mdm.entity.BomSubstitute> addSubstitute(@PathVariable Long bomId,@PathVariable Long lineId,@RequestBody SubstituteCommand c){return ApiResponse.ok(service.addSubstitute(bomId,lineId,c.materialCode(),c.priorityNo(),c.conversionRate()));}
+ @DeleteMapping("/{bomId}/lines/{lineId}/substitutes/{id}") @PreAuthorize("hasAuthority('MDM:BOM:UPDATE')") public ApiResponse<Void> disableSubstitute(@PathVariable Long bomId,@PathVariable Long lineId,@PathVariable Long id){service.disableSubstitute(bomId,lineId,id);return ApiResponse.ok();}
+ public record SubstituteCommand(String materialCode,Integer priorityNo,BigDecimal conversionRate){}
 }

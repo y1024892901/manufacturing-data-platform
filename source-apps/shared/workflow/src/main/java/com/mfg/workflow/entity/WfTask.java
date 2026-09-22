@@ -40,6 +40,9 @@ public class WfTask {
 
     @Column(name = "approver_role", nullable = false, length = 32)
     private String approverRole;
+    @Column(name = "assigned_user", length = 32) private String assignedUser;
+    @Column(name = "source_task_id") private Long sourceTaskId;
+    @Column(name = "sign_mode", length = 16) private String signMode;
 
     /** 实际处理人（领取时写入） */
     @Column(name = "approver_user", length = 32)

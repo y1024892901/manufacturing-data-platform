@@ -1,0 +1,2 @@
+CREATE TABLE src_wms.wms_count_plan(id BIGINT AUTO_INCREMENT PRIMARY KEY,count_no VARCHAR(32) UNIQUE,warehouse_code VARCHAR(32),scope_type VARCHAR(16),status VARCHAR(20) DEFAULT 'DRAFT',planned_date DATE,created_by VARCHAR(32));
+CREATE TABLE src_wms.wms_count_line(id BIGINT AUTO_INCREMENT PRIMARY KEY,count_id BIGINT,material_code VARCHAR(32),location_code VARCHAR(32),batch_no VARCHAR(64),book_qty DECIMAL(18,4),actual_qty DECIMAL(18,4),difference_qty DECIMAL(18,4),review_status VARCHAR(16) DEFAULT 'PENDING');
