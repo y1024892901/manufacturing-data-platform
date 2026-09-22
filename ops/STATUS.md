@@ -4,13 +4,13 @@
 
 ## 一句话结论
 
-**3 个演示脚本已全部实现（共 508 行，纯 Python 标准库、零依赖、可直接运行）**，覆盖主数据全生命周期、BOM 三级审批、审批引擎边界三条叙事线；但四个规划子目录（`scripts/` `sql/` `monitoring/` `backup/`）**全部是空骨架，无一份实现代码**，且 `README.md` 只字未提这三个已实现的脚本。
+**3 个演示脚本已全部实现（共 508 行，纯 Python 标准库、零依赖、可直接运行）**，覆盖主数据全生命周期、BOM 三级审批、审批引擎边界三条叙事线；`README.md` 已改写同步（技术栈、三个脚本的用途与运行方式、四个未实现子目录均已如实说明）；但四个规划子目录（`scripts/` `sql/` `monitoring/` `backup/`）**全部是空骨架，无一份实现代码**。
 
 ## 文件清单
 
 | 文件 | 行数 | 说明 |
 |---|---|---|
-| `README.md` | 25 | ⚠️ 与现状脱节 —— 描述的是 `scripts/` `sql/` `monitoring/` `backup/` 四块**规划**（含 `start.sh`/`reset.sh`/`demo_prep.sh`、Prometheus+Grafana、Docker CLI），**完全未提及已实现的 3 个演示脚本**；技术栈一栏也未列出 Python 标准库方案 |
+| `README.md` | 90 | ✅ 已同步 —— 技术栈一栏为 Python 3 标准库（零第三方依赖）；正文以 3 个**已实现**的演示脚本为主（逐个说明用途与运行方式、前置条件、退出码行为），四个未实现子目录明确标注「仅 README」；格式对齐 `infra/README.md` |
 | `demo_master_data_lifecycle.py` | 214 | ✅ **已实现**。主数据全生命周期：草稿 → 审批 → 发布 → 分发到 9 个业务系统 |
 | `demo_bom_approval.py` | 140 | ✅ **已实现**。BOM 三级审批端到端，四账号接力 |
 | `demo_approval_boundary.py` | 154 | ✅ **已实现**。审批引擎边界测试，6 组共 11 项断言 |
@@ -113,11 +113,10 @@ zhaoliu(赵六/工艺工程师) 提交
 | # | 缺口 | 影响 | 说明 |
 |---|---|---|---|
 | 1 | **明文数据库口令硬编码在脚本里** | **高（安全问题）** | `demo_master_data_lifecycle.py` 第 190、205 行两处把 MySQL `root` 口令以字面量写死（形如 `"MYSQL_PWD": "<口令明文>"`，此处不复述具体值），直接把口令提交进了仓库 —— 与本项目「口令只存在于 `.env`、密钥绝不进代码库」的原则直接冲突（`.gitignore` 排除了 `.env`，却被这个脚本绕过了）。应改为从 `infra/.env` 读取 `MYSQL_PASSWORD`（`infra/mysql8/*.bat` 已有现成的解析写法可参照）。**处置建议**：修复前该口令应视为已泄露，演示环境重建时更换 |
-| 2 | `README.md` 与现状脱节 | 中 | 通篇描述四个**未实现**子目录的规划，未提及 3 个**已实现**的演示脚本；技术栈栏也没有 Python |
-| 3 | `demo_approval_boundary.py` 无失败退出码 | 中 | 结尾只打印 `结果: N/12 通过`，**不 `sys.exit(非0)`**，因此无法被 CI 或批处理据此判定失败（`demo_bom_approval.py` 反而有 `sys.exit(1)`） |
-| 4 | 四个子目录全空 | 中 | `scripts/`（含承诺的 `start.sh` / `reset.sh` / `demo_prep.sh`）、`sql/`、`monitoring/`、`backup/` 均只有 README。**「一键重置、演示可反复重来」这条核心承诺目前没有实现** |
-| 5 | 无备份/快照 | 中 | 演示前无法快速回滚；改坏数据只能重跑 `db-init/` 的 SQL |
-| 6 | 脚本硬编码服务地址与端口 | 低 | `BASE = "http://localhost:8080"` 写死，未读 `.env` 的 `SOURCE_API_PORT` |
-| 7 | 脚本依赖演示专用接口 | 低 | `/api/demo/bom-change` 是演示脚手架端点，若日后清理演示端点，两个脚本会一起失效 |
-| 8 | 无统一入口 | 低 | 三个脚本各自独立运行，没有 `demo_prep` 那样「一条命令跑全套并打印就绪清单」的编排 |
-| 9 | 无巡检能力 | 低 | 服务状态、数据新鲜度、质量通过率、磁盘占用均无检查脚本（`ops/monitoring/` 未实现） |
+| 2 | `demo_approval_boundary.py` 无失败退出码 | 中 | 结尾只打印 `结果: N/12 通过`，**不 `sys.exit(非0)`**，因此无法被 CI 或批处理据此判定失败（`demo_bom_approval.py` 反而有 `sys.exit(1)`） |
+| 3 | 四个子目录全空 | 中 | `scripts/`（含承诺的 `start.sh` / `reset.sh` / `demo_prep.sh`）、`sql/`、`monitoring/`、`backup/` 均只有 README。**「一键重置、演示可反复重来」这条核心承诺目前没有实现** |
+| 4 | 无备份/快照 | 中 | 演示前无法快速回滚；改坏数据只能重跑 `db-init/` 的 SQL |
+| 5 | 脚本硬编码服务地址与端口 | 低 | `BASE = "http://localhost:8080"` 写死，未读 `.env` 的 `SOURCE_API_PORT` |
+| 6 | 脚本依赖演示专用接口 | 低 | `/api/demo/bom-change` 是演示脚手架端点，若日后清理演示端点，两个脚本会一起失效 |
+| 7 | 无统一入口 | 低 | 三个脚本各自独立运行，没有 `demo_prep` 那样「一条命令跑全套并打印就绪清单」的编排 |
+| 8 | 无巡检能力 | 低 | 服务状态、数据新鲜度、质量通过率、磁盘占用均无检查脚本（`ops/monitoring/` 未实现） |

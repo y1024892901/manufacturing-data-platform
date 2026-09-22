@@ -1,47 +1,54 @@
-# infra/ — 基础设施与部署
+# infra/ — 基础设施与数据初始化
+
+> 截至 2026-09-22 · 整体计划见 [PLAN.md](PLAN.md)，当前状态见 [STATUS.md](STATUS.md)
 
 ## 技术栈
 
+本机 **MySQL 8.0.43**（`D:\mysql8`，端口 3306）+ SQL 初始化脚本 + Windows 批处理管理脚本。
 
 ## 职责
-提供**一条命令拉起全栈**的能力。演示系统的第一原则是「永不因环境问题失败」，本目录是这条原则的载体。
 
-## 放什么代码 / 文件
+提供一套**可重复重建**的数据库环境：建库、建表、灌种子，全部幂等。
+
+## 实际文件
 
 ```
 infra/
-├── docker-compose.yml          主编排文件，定义全部服务与依赖
-├── .env.example                环境变量模板（数据库口令、LLM Key、端口）
-├── dockerfiles/                各服务的 Dockerfile
-├── db-init/                    容器首次启动时执行的初始化 SQL
-└── configs/                    服务配置文件（pg 调优、dbt profiles 等）
+├── .env                  本机连接配置（被 .gitignore 排除，绝不入库）
+├── .env.example          环境变量模板
+├── db-init/              建库建表与种子数据，11 个 SQL 脚本（01 → 11）
+├── mysql8/               本机 MySQL 实例的启停管理脚本（3 个 .bat）
+└── configs/              服务配置（当前为空壳）
 ```
-
-## 服务拓扑
-
-| 服务 | 镜像 | 端口 | 说明 |
-|---|---|---|---|
-| `postgres` | pgvector/pgvector:pg16 | 5432 | 一个实例，多个 database 分域 |
-| `dagster` | 自建 | 3000 | 编排与血缘 UI |
-| `api` | 自建 | 8000 | FastAPI 统一网关 |
-| `web-report` | node | 5173 | 自研报表前端 |
-| `web-admin` | node | 5174 | 管理后台前端 |
 
 ## 单实例多库设计（关键决策）
 
-不启动 9 个数据库容器，而是在一个 PostgreSQL 实例内用 **database 隔离**：
+不启动多个数据库容器，而是在**一个 MySQL 实例内用 database 隔离**各业务域。
 
-| database | 用途 | 谁写 |
-|---|---|---|
-| `src_crm` … `src_energy` | 模拟源系统（可合并为 `src_sim`） | 造数引擎 |
-| `warehouse` | ODS / DWD / DWS / ADS 四层 | dbt |
-| `platform_meta` | 管理后台的元数据（系统、表、字段、规则、用户） | Admin API |
-| `app_meta` | 向量库（pgvector）与 Agent 会话记录 | AI 服务 |
+实测规模：**18 个数据库、99 张表**，覆盖 MDM、九个业务系统库及平台库。
 
-**收益**：一个容器覆盖全部数据需求，启动时间从分钟级降到秒级，且演示现场只需保证一个进程存活。
+**收益**：一个实例覆盖全部数据需求，启动快；演示现场只需保证一个进程存活。
 
-## 干什么事情
-1. `docker compose up -d` 一键启动，服务间用 `depends_on` + 健康检查控制启动顺序
-2. `.env` 统一管理密钥，**LLM API Key 绝不进代码库**
-3. 首次启动自动建库、建扩展（pgvector）、建 schema 骨架
-4. 提供 `docker compose down -v` 的完整重置路径，保证演示可反复重来
+## 不使用 Docker
+
+早期方案曾规划 `docker-compose.yml` + `dockerfiles/` 容器化全栈，**该方案已废弃并删除**。
+
+原因：数据库直接使用本机实例即可满足演示需求，引入容器反而增加演示现场的不确定性（镜像拉取、端口映射、卷权限）。Java 服务与前端均以本机原生进程运行。
+
+> ⚠️ 若在别处看到描述 PostgreSQL + `docker compose up` 的文档，均为早期方案残留，以本文件为准。
+
+## 初始化顺序
+
+`db-init/` 的 11 个脚本**必须按序号全部执行**，缺一不可：
+
+```
+01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 → 10 → 11
+```
+
+**特别注意 `09` / `10` / `11` 不可跳过**——它们负责权限映射、BOM 副本与 PLM 审批链。漏跑会得到一套**权限全空**的库（所有 `@PreAuthorize` 拦截），且缺失部分主数据副本。
+
+各脚本建了什么，见 [db-init/STATUS.md](db-init/STATUS.md) 的脚本清单表。
+
+## 演示账号
+
+统一演示口令见 `db-init/08_seed_data.sql`；演示账号列表由 `/api/auth/demo-accounts` 动态返回。

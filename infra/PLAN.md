@@ -11,7 +11,7 @@
 | 数据库从哪来 | 本机 MySQL 8.0.43（`D:\mysql8`，端口 3306），由 `mysql8/` 管理 |
 | 表和数据从哪来 | `db-init/` 的 11 个幂等 SQL 脚本，一次建成 18 库、99 表与全套种子数据 |
 | 配置从哪来 | `.env`（`MYSQL_*` / `LLM_*` / 端口 / `JWT_SECRET`），由 `.gitignore` 排除，绝不入库 |
-| 服务怎么起 | Python 侧（Dagster / API）预留 `docker-compose.yml`；Java 与前端走本机原生进程 |
+| 服务怎么起 | 不使用容器编排，Java 服务与前端均为本机原生进程 |
 
 **谁依赖它：**
 
@@ -38,8 +38,6 @@
 | `db-init/` | 18 库 / 99 表的建库建表与种子数据（11 个幂等 SQL） | ✅ 已执行完毕 |
 | `.env` | 运行期唯一配置源（数据库、LLM、端口、JWT） | ✅ 已配置（不入库） |
 | `.env.example` | 配置模板 | ⚠️ 内容陈旧（仍是 PostgreSQL 版） |
-| `docker-compose.yml` | Python 侧服务编排（Dagster / API） | ⚠️ 预留，依赖的 Dockerfile 缺失 |
-| `dockerfiles/` | 服务镜像定义 | ❌ 已废弃 |
 | `configs/` | Dagster / dbt 等服务配置 | ❌ 未实现（骨架） |
 
 ### 三条规划原则

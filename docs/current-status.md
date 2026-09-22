@@ -102,13 +102,18 @@
 | 18 | `MaterialView.vue` / `BusinessWorkspaceView.vue` | 分页不一致：前者写死 `page=1&size=20` 无法翻页；后者表头「共 N 条」显示的是当前页条数而非总数 |
 | 19 | `api/http.ts` | 请求拦截器从 `localStorage` 直读令牌，而非从 Pinia store 读——同一份状态有两个真相来源 |
 | 20 | `ops/demo_master_data_lifecycle.py:190,205` | **明文硬编码 MySQL root 口令**，且已进入公开仓库——见上方安全警示 |
-| 21 | `infra/db-init/README.md` | 执行清单只列到 `08`，**漏了 `09`/`10`/`11`**——照 README 重建会得到一套**权限全空**的库（`sys_role_permission` 无数据 → 所有 `@PreAuthorize` 拦截），且缺 BOM 副本与 PLM 审批链 |
-| 22 | `infra/.env.example` | 仍是 **PostgreSQL 模板**（`POSTGRES_*` 键名），与真实 `.env` 的 `MYSQL_*` 完全不匹配——照注释 `cp .env.example .env` 会得到读不到连接信息的配置 |
-| 23 | `infra/README.md` | 通篇描述 PostgreSQL + `docker compose up`，与现状相反；「技术栈」小节是空标题 |
-| 24 | `infra/docker-compose.yml` | 引用的两个 Dockerfile 与 `configs/dagster.yaml` **实际都不存在**，`docker compose up` 必然失败 |
-| 25 | 库数口径 | `01_databases.sql` 文件头写「20 个」、`mysql8/README` 写 20、`db-init/README` 写 18，实测 `CREATE DATABASE` 为 **18** |
-| 26 | `08_seed_data.sql` | 文件头写「28 个岗位角色 / 29 个演示账号」，实测各为 **36** |
-| 27 | `ops/demo_approval_boundary.py` | 失败时不 `sys.exit(非0)`（结尾只打印 `N/11 通过`），无法被 CI 据此判定失败——同目录的 `demo_bom_approval.py` 反而有 `sys.exit(1)` |
+| 21 | 库数口径 | `01_databases.sql` 文件头写「20 个」、`mysql8/README` 写 20、`db-init/README` 写 18，实测 `CREATE DATABASE` 为 **18** |
+| 22 | `08_seed_data.sql` | 文件头写「28 个岗位角色 / 29 个演示账号」，实测各为 **36** |
+| 23 | `ops/demo_approval_boundary.py` | 失败时不 `sys.exit(非0)`（结尾只打印 `N/11 通过`），无法被 CI 据此判定失败——同目录的 `demo_bom_approval.py` 反而有 `sys.exit(1)` |
+
+### 已修复
+
+以下问题在本次文档整理中一并修复：
+
+- `infra/db-init/README.md` 执行清单漏列 `09`/`10`/`11`（原会导致照文档重建出权限全空的库）——已补全并加了显式警示；
+- `infra/.env.example` 仍是 PostgreSQL 模板——已重写，键名与真实 `.env` 的 `MYSQL_*` / `SRC_*_DB` 对齐；
+- `infra/README.md` 仍描述 PostgreSQL + `docker compose up`——已重写为本机 MySQL 方案；
+- `infra/docker-compose.yml` 与 `infra/dockerfiles/`（依赖文件缺失、`compose up` 必然失败）——已删除。
 
 ## 文档说明
 

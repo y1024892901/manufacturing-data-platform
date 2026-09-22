@@ -7,6 +7,10 @@ MySQL 8.0.43（`D:\mysql8`，端口 3306）· 纯 SQL · 幂等设计（可重�
 
 按编号顺序执行（已全部执行完毕，此表仅供重建参考）：
 
+> ⚠️ **11 个脚本必须全部执行，`09` / `10` / `11` 不可跳过。**
+> 漏跑 `09` 会得到一套**权限全空**的库（`sys_role_permission` 无数据，所有 `@PreAuthorize` 全部拦截）；
+> 漏跑 `10` / `11` 则缺失 BOM 副本与 PLM 审批链。
+
 ```bash
 export MYSQL_PWD='<见 infra/.env>'
 MYSQL=D:/mysql8/bin/mysql.exe
@@ -19,6 +23,9 @@ $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 05_business_s
 $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 06_warehouse.sql
 $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 07_platform.sql
 $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 08_seed_data.sql
+$MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 09_role_permission.sql
+$MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 10_missing_copies.sql
+$MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 11_plm_ecn_workflow.sql
 ```
 
 | 文件 | 内容 | 目标库 |
@@ -31,6 +38,9 @@ $MYSQL -uroot -P3306 -h127.0.0.1 --default-character-set=utf8mb4 < 08_seed_data.
 | `06_warehouse.sql` | 数仓四层框架表 | `mfg_ods` `mfg_dwd` `mfg_dws` `mfg_ads` |
 | `07_platform.sql` | 运维 / 元数据 / AI 应用表 | `mfg_ops` `mfg_meta` `mfg_app` |
 | `08_seed_data.sql` | 账号 / 角色 / 审批链 / 规则 / 指标 | 全部 |
+| `09_role_permission.sql` | **角色-权限映射（不可跳过）** | `mfg_auth` |
+| `10_missing_copies.sql` | 补齐缺失的主数据只读副本 | 各 `src_*` |
+| `11_plm_ecn_workflow.sql` | PLM ECN 变更审批链 | `mfg_auth` |
 
 ---
 

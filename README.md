@@ -31,11 +31,22 @@ manufacturing-data-platform/
 │   ├── mdm/               统一主数据管理
 │   └── crm|erp|plm|srm|wms|mes|qms|eam|energy/
 ├── infra/db-init/         MySQL 全量建库、建表和固定种子
-├── docs/                  范围、技术基线和功能目录
-└── tests/                 自动化验收
+├── ops/                   演示脚本（主数据生命周期、BOM 审批、审批边界）
+└── docs/                  范围、技术基线和功能目录
 ```
 
-旧的 Python/React/数仓目录是后续阶段或历史方案，不参与 P0-P5 运行。
+尚未实施的目录（`ai/`、`models/`、`orchestration/`、`transforms/`、`ingestion/`、`source-data/`、`tests/` 等）是 P6/P7 阶段的骨架，其 README 顶部统一标有 `状态：未实现`。已废弃的历史方案目录标有 `状态：已废弃`。两者的内部设计稿均已移除，如需查阅可回溯提交 `6cbe906`。
+
+## 文档约定
+
+有实现代码的目录各提供两份文档：
+
+| 文件 | 内容 |
+|---|---|
+| `PLAN.md` | **整体计划** —— 该系统要做什么，依据 [功能目录](docs/system-functional-catalog.md) |
+| `STATUS.md` | **目前进展** —— 已实现的类与接口，并对照「系统本职完成的最低验收」逐项列出差距 |
+
+十系统整体进度总览见 [当前进展](docs/current-status.md)。
 
 ## 本地启动
 

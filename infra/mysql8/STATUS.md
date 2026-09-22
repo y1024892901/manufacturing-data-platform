@@ -84,4 +84,4 @@ Set-Service -Name MySQL -StartupType Manual    # 管理员身份
 | 5 | 库数说法不一致 | 低 | `README.md` 写「本项目 **20** 个库」，`status-mysql8.bat` 注释里 5.7 的库数写「18 databases」。实测项目库为 **18**（见 [../db-init/STATUS.md](../db-init/STATUS.md)）；`SHOW DATABASES` 还会额外带出 `information_schema` 等系统库，故实际输出行数会更多 |
 | 6 | 无健康检查/告警 | 低 | 没有「实例挂了自动重启」或「磁盘/连接数超限告警」；`ops/monitoring/` 尚未实现 |
 | 7 | 无备份 | 中 | 数据全在 `D:\mysql8\data`，无定期 dump；`ops/backup/` 尚未实现 |
-| 8 | 远程访问面较大 | 中 | 初始化记录中创建了 `root'@'%'` 并 `GRANT ALL PRIVILEGES ON *.*`（为容器内 Dagster/api 经 `host.docker.internal` 访问所需）。演示环境下可接受，但该账号对整个局域网开放，**不应照搬到任何非演示环境** |
+| 8 | 远程访问面较大 | 中 | 初始化记录中创建了 `root'@'%'` 并 `GRANT ALL PRIVILEGES ON *.*`（历史遗留：早期为容器内 Dagster/api 经 `host.docker.internal` 访问所建，容器方案已废弃，该账号可考虑收回）。演示环境下可接受，但该账号对整个局域网开放，**不应照搬到任何非演示环境** |
