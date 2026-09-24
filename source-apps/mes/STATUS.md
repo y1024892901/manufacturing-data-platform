@@ -10,13 +10,13 @@
 
 ### 分层文件统计
 
-`source-apps/mes/src/main/java/com/mfg/mes/` 共 7 个 Java 文件（6 个代码文件 + 1 个 `package-info.java`）：
+`source-apps/mes/src/main/java/com/mfg/mes/` 共 9 个 Java 文件（8 个代码文件 + 1 个 `package-info.java`）：
 
 | 分层 | 文件数 | 关键类 |
 |---|---|---|
 | `domain/` | 0 | — |
-| `entity/` | 2 | `WorkOrder`（`mes_work_order`）、`WorkReport`（`mes_work_report`） |
-| `repo/` | 2 | `WorkOrderRepository`（无自定义方法）、`WorkReportRepository`（`existsByReportNo`） |
+| `entity/` | 3 | `WorkOrder`（`mes_work_order`）、`WorkReport`（`mes_work_report`）、`ProdResult`（`mes_prod_result`） |
+| `repo/` | 3 | `WorkOrderRepository`（无自定义方法）、`WorkReportRepository`（`existsByReportNo`）、`ProdResultRepository`（`findByProdOrderNo`） |
 | `service/` | 0 | — |
 | `controller/` | 2 | `WorkOrderController`、`WorkReportController` |
 | `dto/` | 0 | — |
@@ -81,18 +81,19 @@ POST /api/mes/work-orders/{id}/report → STARTED ──(累计 = planQty)──
 
 | 实体 | 库.表 | 关键列 |
 |---|---|---|
-| `WorkOrder` | `src_mes.mes_work_order` | `work_order_no`、`prod_order_no`、`product_code`、`op_seq`、`operation_code`、`operation_name`、`equipment_code`、`plan_qty`、`completed_qty`、`qualified_qty`、`scrap_qty`、`wo_status`、`actual_start_time`、`actual_end_time` |
-| `WorkReport` | `src_mes.mes_work_report` | `report_no`、`work_order_no`、`prod_order_no`、`op_seq`、`report_qty`、`qualified_qty`、`scrap_qty`、`report_date`、`start_time`、`end_time`、`work_hours`、`equipment_code`、`operator_code`、`shift_code`、`is_paused`、`pause_reason`、`pause_minutes`、`created_by` |
+| `WorkOrder` | `src_mes.mes_work_order` | `work_order_no`、`prod_order_no`、`product_code`、`op_seq`、`operation_code`、`operation_name`、`equipment_code`、`plan_qty`、`completed_qty`、`qualified_qty`、`scrap_qty`、`wo_status`、`actual_start_time`、`actual_end_time`、`routing_code`、`routing_version`、`work_center`、`workshop_code`、`plan_start_time`、`plan_end_time`、`plan_hours`、`actual_hours`、`workshop_user`、`created_at`、`updated_at` |
+| `WorkReport` | `src_mes.mes_work_report` | `report_no`、`work_order_no`、`prod_order_no`、`op_seq`、`report_qty`、`qualified_qty`、`scrap_qty`、`report_date`、`start_time`、`end_time`、`work_hours`、`equipment_code`、`operator_code`、`shift_code`、`is_paused`、`pause_reason`、`pause_minutes`、`created_by`、`created_at` |
+| `ProdResult` | `src_mes.mes_prod_result` | `prod_order_no`(唯一)、`product_code`、`total_plan_qty`、`total_completed_qty`、`total_qualified_qty`、`progress_rate`、`current_op_seq`、`last_report_at`、`updated_at` |
 
 ### 有表但无任何 Java 代码读写的表
 
 | 库.表 | 建表位置 | 说明 |
 |---|---|---|
-| `src_mes.mes_prod_result` | `infra/db-init/05_business_systems_2.sql` | 工序级生产实绩汇总（`progress_rate`、`current_op_seq`、`last_report_at`），**无实体、无 repo、无接口**；报工时不更新，`progress_rate` 永远是 NULL |
-| `src_mes.mes_md_material` | 同上 | 物料主数据只读副本，由 **MDM** `MasterDataDistributor` 写入（`INSERT INTO src_mes.mes_md_material`），MES 侧无代码 |
+| `src_mes.mes_md_material` | `infra/db-init/05_business_systems_2.sql` | 物料主数据只读副本，由 **MDM** `MasterDataDistributor` 写入（`INSERT INTO src_mes.mes_md_material`），MES 侧无代码 |
 | `src_mes.mes_md_routing_operation` | 同上 | 工艺路线工序只读副本，由 **MDM** `MasterDataDistributor.writeRoutingOperations(..., "src_mes.mes_md_routing_operation")` 写入，MES 侧无代码 |
 
-> **实体与表结构不同步**：`mes_work_order` 的 DDL 有 `routing_code`、`routing_version`、`work_center`、`workshop_code`、`plan_start_time`、`plan_end_time`、`plan_hours`、`actual_hours`、`workshop_user`、`created_at`、`updated_at` 共 11 列**未映射进 `WorkOrder` 实体**。因此「派工到班组/工作中心」「计划与实际工时」「数据范围（车间负责人）」这些字段在 Java 侧完全不可见——派工与工时能力实际上只有列名，没有代码。
+> **实体与表结构同步（计划 00 · F4-05）**：`mes_work_order` 的 11 列（`routing_code`、`routing_version`、`work_center`、`workshop_code`、`plan_start_time`、`plan_end_time`、`plan_hours`、`actual_hours`、`workshop_user`、`created_at`、`updated_at`）与 `mes_work_report` 的 `created_at` 已补进实体映射，派工/工时/数据范围字段在 Java 侧可见。
+> `mes_prod_result` 已新建 `ProdResult` 实体与 `ProdResultRepository`（`findByProdOrderNo`，对应唯一键 `uk_pr_prod`），**但本表仍无 controller 与写入点**：报工接口不更新实绩，`progress_rate` 依旧是 NULL——「有实体」不等于「有数据」，补齐写入属后续计划范围。
 
 ### 迁移脚本
 
@@ -117,7 +118,7 @@ POST /api/mes/work-orders/{id}/report → STARTED ──(累计 = planQty)──
 | 2. 至少 3 类核心单据可以从创建流转到关闭或作废 | **未达标** | 只有 1 类：**工单** `CREATED`→（`RELEASED`）→`STARTED`→`COMPLETED`，且**没有作废/取消路径**（`CANCELED` 未实现）。**报工单**（`WorkReport`）没有状态字段，建了就终态，不构成可流转单据。**第三类单据不存在**——无返工任务、无报废申请、无 Andon 事件、无领料单 |
 | 3. 至少 1 个审批流程和 1 个异常处理闭环 | **未实现** | 无 `workflow/` 层、无 `ApprovalCallback` 实现（全仓 5 个回调分别属于 mdm/crm/erp/plm），`shared-workflow` 依赖被引入但零使用；工单无提交/审核动作。异常闭环：**无** —— `WorkReport` 有 `is_paused`/`pause_reason`/`pause_minutes` 三列，但报工接口不接收这三个字段，无暂停/恢复接口，无异常升级与响应时效 |
 | 4. 至少 2 个向其他系统发送或消费的幂等业务事件 | **未实现** | 全仓检索：MES **不发布任何事件**（无 `BusinessEventService.publish()` 调用），也**不消费任何事件**；与 MES 相关的事件类型在 `mfg_ops.biz_outbox` 的事件清单里为 0 条。ERP 生产订单与 MES 工单之间没有事件通道，只能靠 `prodOrderNo` 字符串关联 |
-| 5. 至少 1 页本系统运营查询或统计报表 | **未实现** | `query/` 层不存在；只有 `/api/mes/work-orders` 与 `/api/mes/reports` 两个分页列表，无进度、OEE、达成率、直通率、工时偏差、在制品任一接口或统计视图。`mes_prod_result.progress_rate` 列已建好但无人写入 |
+| 5. 至少 1 页本系统运营查询或统计报表 | **未实现** | `query/` 层不存在；只有 `/api/mes/work-orders` 与 `/api/mes/reports` 两个分页列表，无进度、OEE、达成率、直通率、工时偏差、在制品任一接口或统计视图。`mes_prod_result` 已补实体与 repo，但 `progress_rate` 列仍无人写入 |
 
 **结论：五项全部未达标。** 严格来说第 1、2 项各有约两个模块/一类单据的雏形，但按「至少 5 个模块」「至少 3 类单据」的门槛计，差距明显。
 
@@ -125,14 +126,14 @@ POST /api/mes/work-orders/{id}/report → STARTED ──(累计 = planQty)──
 
 ### 业务能力缺口（catalog 七模块中五项全空）
 
-- **派工**：`mes_work_order` 有 `equipment_code`/`work_center`/`workshop_code`/`workshop_user` 列，但实体只映射了 `equipment_code`；无派工单、无班组/人员分配、无优先级字段与接口、无排产。
+- **派工**：`mes_work_order` 的 `equipment_code`/`work_center`/`workshop_code`/`workshop_user` 四列已全部映射进实体（计划 00 · F4-05），但**没有任何接口写入**；无派工单、无班组/人员分配、无优先级字段与接口、无排产。
 - **在制品管理**：WIP 状态、工序流转、批次追溯、工艺参数、电子作业指导书——全部无表无接口。工单的 `op_seq` 是单值，无法表达工序链流转（对比 `mes_md_routing_operation` 副本表里明明有工序序列）。
 - **领退料协同**：领料、补料、退料、超耗、替代料、批次绑定——全部未实现。WMS 侧有 `ISSUE`/`RETURN_MATERIAL` 库存动作，但两边没有对接（`WorkOrder` 与 WMS 无任何代码关联）。
 - **异常与 Andon**：缺料/设备/质量/工艺/人员异常分类、升级、响应时效——全部未实现。
 - **返工报废**：`WorkReport.scrapQty` 只有一个报废数量字段，**无返工任务单、无返工路线、无报废申请单、无损失归集**。注意 QMS 模块有 `qms_rework` 表（P3 的 `reworks` kind），MES 侧无对应物。
-- **生产报表**：进度、OEE、达成率、直通率、工时偏差、在制品——全部未实现；`mes_prod_result` 建了表没有代码。
+- **生产报表**：进度、OEE、达成率、直通率、工时偏差、在制品——全部未实现；`mes_prod_result` 已有实体与 repo（计划 00 · F4-05），但仍无查询接口、无写入点。
 - **工序暂停**：DDL 与实体都有暂停三列，无接口写入。
-- **工时**：`WorkReport.workHours`、`WorkOrder` 的 `plan_hours`/`actual_hours`（未映射）都是空置字段；`start_time`/`end_time` 也无接口写入（报工接口只回填 `reportDate`）。
+- **工时**：`WorkReport.workHours`、`WorkOrder` 的 `plan_hours`/`actual_hours`（已映射，计划 00 · F4-05）都是空置字段；`start_time`/`end_time` 也无接口写入（报工接口只回填 `reportDate`）。
 
 ### 工程与架构缺口
 

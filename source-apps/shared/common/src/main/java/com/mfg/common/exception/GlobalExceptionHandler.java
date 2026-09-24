@@ -36,6 +36,13 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(e.getErrorCode(), e.getMessage());
     }
 
+    /** 方法级鉴权异常不能落入通用 500 兜底。 */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Void> handleForbidden(org.springframework.security.access.AccessDeniedException e) {
+        return ApiResponse.fail(ErrorCode.FORBIDDEN, ErrorCode.FORBIDDEN.getDefaultMessage());
+    }
+
     /** 请求体字段校验失败 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

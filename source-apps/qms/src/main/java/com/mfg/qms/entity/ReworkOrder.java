@@ -22,4 +22,5 @@ public class ReworkOrder {
     @Column(name = "rework_status") private String status = "PENDING";
     @Column(name = "start_time") private LocalDateTime startTime;
     @Column(name = "end_time") private LocalDateTime endTime;
+    @Column(name = "created_at") private LocalDateTime createdAt;
 }

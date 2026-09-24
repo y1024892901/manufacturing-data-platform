@@ -30,4 +30,5 @@ public class WorkReport {
     @Column(name = "pause_reason") private String pauseReason;
     @Column(name = "pause_minutes") private Integer pauseMinutes = 0;
     @Column(name = "created_by") private String createdBy;
+    @Column(name = "created_at") private LocalDateTime createdAt;
 }

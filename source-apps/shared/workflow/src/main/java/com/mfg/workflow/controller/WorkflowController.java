@@ -54,17 +54,20 @@ public class WorkflowController {
 
     @Operation(summary = "待办数量", description = "首页角标用，避免拉全量数据")
     @GetMapping("/tasks/pending/count")
+    @PreAuthorize("hasAuthority('WF:TASK:VIEW')")
     public ApiResponse<Long> pendingCount() {
         return ApiResponse.ok(engine.myPendingCount());
     }
 
     @GetMapping("/tasks/handled")
+    @PreAuthorize("hasAuthority('WF:TASK:VIEW')")
     public ApiResponse<Page<Map<String, Object>>> handled(@RequestParam(defaultValue = "1") int page,
                                                            @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(queryService.myHandled(page, size));
     }
 
     @GetMapping("/instances/started")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
     public ApiResponse<Page<WfInstance>> started(@RequestParam(defaultValue = "1") int page,
                                                   @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(queryService.myStarted(page, size));
@@ -109,6 +112,7 @@ public class WorkflowController {
 
     @Operation(summary = "撤回", description = "提交人在流程未完成前撤回，业务单据回到草稿")
     @PostMapping("/instances/{instanceId}/cancel")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:CANCEL')")
     public ApiResponse<Map<String, Object>> cancel(
             @PathVariable Long instanceId,
             @RequestBody(required = false) OpinionRequest body) {
@@ -125,18 +129,21 @@ public class WorkflowController {
 
     @Operation(summary = "审批时间轴", description = "完整展示谁在什么时候做了什么——演示的核心视觉元素")
     @GetMapping("/instances/{instanceId}/timeline")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
     public ApiResponse<List<TimelineItem>> timeline(@PathVariable Long instanceId) {
         return ApiResponse.ok(queryService.timeline(instanceId));
     }
 
     @Operation(summary = "实例详情")
     @GetMapping("/instances/{instanceId}")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
     public ApiResponse<WfInstance> instance(@PathVariable Long instanceId) {
         return ApiResponse.ok(engine.getInstance(instanceId));
     }
 
     @Operation(summary = "业务单据的审批历史", description = "一个单据可能有多轮审批（被驳回后重新提交）")
     @GetMapping("/instances/history")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
     public ApiResponse<List<WfInstance>> history(@RequestParam String bizType,
                                                  @RequestParam Long bizId) {
         return ApiResponse.ok(engine.historyOf(bizType, bizId));
@@ -144,6 +151,7 @@ public class WorkflowController {
 
     @Operation(summary = "业务单据当前是否在审批中")
     @GetMapping("/instances/running")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
     public ApiResponse<WfInstance> running(@RequestParam String bizType,
                                            @RequestParam Long bizId) {
         return ApiResponse.ok(engine.runningOf(bizType, bizId).orElse(null));
@@ -153,6 +161,7 @@ public class WorkflowController {
 
     @Operation(summary = "全部审批流程定义", description = "展示 7 条审批链的节点与审批角色")
     @GetMapping("/definitions")
+    @PreAuthorize("hasAuthority('WF:DEFINITION:VIEW')")
     public ApiResponse<List<WfDefinition>> definitions() {
         return ApiResponse.ok(definitionRepo.findByEnabledTrueOrderByIdAsc());
     }
@@ -160,9 +169,9 @@ public class WorkflowController {
     /** 审批意见请求体 */
     public record OpinionRequest(String opinion) {
     }
-    @PostMapping("/tasks/{taskId}/transfer") public ApiResponse<WfTask> transfer(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.transfer(taskId,body.username(),body.reason()));}
-    @PostMapping("/tasks/{taskId}/add-sign") public ApiResponse<WfTask> addSign(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.addSign(taskId,body.username(),body.mode(),body.reason()));}
-    @PostMapping("/instances/{instanceId}/cc") public ApiResponse<Void> cc(@PathVariable Long instanceId,@RequestBody CopyRequest body){engine.copyTo(instanceId,body.usernames(),body.reason());return ApiResponse.ok();}
-    @GetMapping("/tasks/copied") public ApiResponse<Page<com.mfg.workflow.entity.WfCc>> copied(@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){return ApiResponse.ok(ccRepo.findByUsernameOrderByIdDesc(com.mfg.security.config.CurrentUser.get().getUsername(),PageRequest.of(Math.max(0,page-1),Math.min(200,Math.max(1,size)))));}
+    @PostMapping("/tasks/{taskId}/transfer") @PreAuthorize("hasAuthority('WF:TASK:TRANSFER')") public ApiResponse<WfTask> transfer(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.transfer(taskId,body.username(),body.reason()));}
+    @PostMapping("/tasks/{taskId}/add-sign") @PreAuthorize("hasAuthority('WF:TASK:ADD_SIGN')") public ApiResponse<WfTask> addSign(@PathVariable Long taskId,@RequestBody AssignmentRequest body){return ApiResponse.ok(engine.addSign(taskId,body.username(),body.mode(),body.reason()));}
+    @PostMapping("/instances/{instanceId}/cc") @PreAuthorize("hasAuthority('WF:INSTANCE:CC')") public ApiResponse<Void> cc(@PathVariable Long instanceId,@RequestBody CopyRequest body){engine.copyTo(instanceId,body.usernames(),body.reason());return ApiResponse.ok();}
+    @GetMapping("/tasks/copied") @PreAuthorize("hasAuthority('WF:TASK:VIEW')") public ApiResponse<Page<com.mfg.workflow.entity.WfCc>> copied(@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){return ApiResponse.ok(ccRepo.findByUsernameOrderByIdDesc(com.mfg.security.config.CurrentUser.get().getUsername(),PageRequest.of(Math.max(0,page-1),Math.min(200,Math.max(1,size)))));}
     public record AssignmentRequest(String username,String mode,String reason){} public record CopyRequest(List<String> usernames,String reason){}
 }

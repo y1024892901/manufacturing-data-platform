@@ -1,5 +1,11 @@
 # wms/ — 目前进展
 
+## 2026-09-23 执行更新
+
+收货后的 QMS 建检验单改为异步消费；收货返回后需等待消费调度（通常 2 秒）。补齐 StockTransaction 的 purchase_order_no、txn_time（LocalDateTime）及 created_at 映射。统计报表等计划 03 范围未实施。
+
+以下为 2026-09-22 基线详情，涉及上述内容时以本节为准。
+
 > 截至 2026-09-22 · 对应整体计划见 [PLAN.md](PLAN.md)
 
 ## 一句话结论

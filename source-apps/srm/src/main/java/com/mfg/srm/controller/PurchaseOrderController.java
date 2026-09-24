@@ -1,4 +1,6 @@
 package com.mfg.srm.controller;
+import com.mfg.security.scope.ScopedQueryService;
+import com.mfg.security.scope.ScopedResource;
 
 import com.mfg.common.api.*;
 import com.mfg.common.exception.BizException;
@@ -7,6 +9,7 @@ import com.mfg.srm.entity.*;
 import com.mfg.srm.repo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.*;
@@ -15,16 +18,18 @@ import java.time.*;
 @RestController
 @RequestMapping("/api/srm")
 @RequiredArgsConstructor
-public class PurchaseOrderController {
+public class PurchaseOrderController {private final ScopedQueryService scope;
     private final PurchaseOrderRepository repo;
     private final SupplierDeliveryRepository deliveries;
 
     @GetMapping("/purchase-orders")
+    @PreAuthorize("hasAuthority('SRM:PURCHASE:VIEW')")
     public ApiResponse<Page<PurchaseOrder>> page(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(repo.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(size, 200))));
+        return ApiResponse.ok(scope.page(ScopedResource.PURCHASE_ORDER,PurchaseOrder.class,page,size,null,null));
     }
 
     @PostMapping("/purchase-orders")
+    @PreAuthorize("hasAuthority('SRM:PURCHASE:CREATE')")
     public ApiResponse<PurchaseOrder> create(@RequestBody PurchaseOrder p) {
         if (repo.existsByPurchaseOrderNo(p.getPurchaseOrderNo()))
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "采购订单号已存在");
@@ -36,7 +41,8 @@ public class PurchaseOrderController {
     }
 
     @PostMapping("/purchase-orders/{id}/send")
-    public ApiResponse<PurchaseOrder> send(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority('SRM:PURCHASE:SEND')")
+    public ApiResponse<PurchaseOrder> send(@PathVariable Long id) {scope.requireVisible(ScopedResource.PURCHASE_ORDER,id);
         PurchaseOrder p = repo.findById(id).orElseThrow(() -> BizException.notFound("采购订单", id));
         if (!"CREATED".equals(p.getStatus()))
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有已创建采购订单可下达");
@@ -45,11 +51,13 @@ public class PurchaseOrderController {
     }
 
     @GetMapping("/deliveries")
+    @PreAuthorize("hasAuthority('SRM:DELIVERY:VIEW')")
     public ApiResponse<Page<SupplierDelivery>> deliveryPage(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(deliveries.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(size, 200))));
     }
 
     @PostMapping("/deliveries")
+    @PreAuthorize("hasAuthority('SRM:DELIVERY:CREATE')")
     public ApiResponse<SupplierDelivery> delivery(@RequestBody SupplierDelivery d) {
         if (deliveries.existsByDeliveryNo(d.getDeliveryNo()))
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "到货单号已存在");
@@ -66,6 +74,7 @@ public class PurchaseOrderController {
     }
 
     @PostMapping("/deliveries/{id}/inspect")
+    @PreAuthorize("hasAuthority('SRM:DELIVERY:INSPECT')")
     public ApiResponse<SupplierDelivery> inspect(@PathVariable Long id, @RequestParam BigDecimal qualifiedQty) {
         SupplierDelivery d = deliveries.findById(id).orElseThrow(() -> BizException.notFound("到货单", id));
         if (qualifiedQty.compareTo(d.getDeliveryQty()) > 0)

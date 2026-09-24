@@ -50,6 +50,33 @@ QMS 是十系统中质量数据的判定与处置中心：从 WMS 收货确认�
 | `query/` | **未建立该包** | 列表查询走 `P3CrudService.page()` 或各 Controller 的 `repo.findAll(PageRequest)`；无独立查询层，也无统计报表接口 |
 | `dto/` | **未建立** | 请求体直接用实体（`Inspection`/`DefectRecord`/`ReworkOrder`）或裸 `Map<String,Object>` |
 
+### 裸 SQL 表登记（计划 00 · F4-03 / F4-06 口径）
+
+以下 5 张表**有意不补 JPA 实体**，按 F4-03 的「登记为裸 SQL 表」口径记录在此：
+
+| 库.表 | 建表来源 | 当前读写通道 |
+|---|---|---|
+| `src_qms.qms_ncr` | `V36` | `QmsP3Controller` → `P3CrudService`（泛型 CRUD + `rules()` 状态机）；`QmsLifecycleService.dispose()` 用 JdbcTemplate 写状态 |
+| `src_qms.qms_capa` | `V36` | 同上（CAPA 状态机 `DRAFT`→`IMPLEMENTING`→`VERIFYING`→`CLOSED`） |
+| `src_qms.qms_eight_d` | `V37` | 同上（8D 状态机 `OPEN`→`SUBMITTED`→`VERIFYING`→`CLOSED`） |
+| `src_qms.qms_standard` | `V35` | 同上（`standards` kind 的通用 CRUD） |
+| `src_qms.qms_sampling_plan` | `V35` | 同上（`sampling-plans` kind 的通用 CRUD） |
+
+**为什么不补实体**：
+
+1. **已有可用且被实际使用的通道**。这 5 张表的读写都落在两条**非实体通道**上：`P3CrudService`（`create()` 查 `information_schema.COLUMNS` 取列白名单、`rules()` 持有状态机、`page()` 提供分页）与 `QmsLifecycleService` 的 JdbcTemplate。补实体后同一张表会出现「JPA 写 / 裸 SQL 写」两套口径——正是 `wms/PLAN.md` 记录过的「两条写入通道未收口」那类问题，本模块不主动制造。
+2. **补了也没有消费方**。4 个 controller 中没有任何一个走实体路径读这 5 张表；补实体只是新增一批无人调用的 repo 方法，不改变任何接口行为。
+3. **有真实的路由风险**。`QmsP3Controller` 的 `/{kind}` 与字面量路径共存，靠 Spring MVC「字面量优先」的规则分流；把 `inspections`/`reworks` 之类的表名加进 `K` 白名单会立刻产生路由冲突（见下文「关键设计取舍」）。在这套路由模型下，实体化与通用 CRUD 是互斥的两条路，不是可以逐个表随意混用的。
+4. **字段校验缺口不是实体能补的**。这 5 张表当前的真实短板是「必填、取值范围、关联存在性全部无校验」（见 STATUS.md 缺口 5）。补实体若只映射列而不写 service 校验，短板原样保留；要补的是校验逻辑，不是映射。
+
+**取舍是可逆的，触发条件写明**：当某张表出现下列任一需求时，再从裸 SQL 升为实体 + repo + service，并从 `P3CrudService` 的 `K` 白名单中移除同名列（**必须同批移除，否则路由冲突**）：
+
+- 需要**结构化校验**（如 `qms_standard` 的 AQL 推导、抽样量计算——需读 `qms_standard_item` 做关联校验）；
+- 需要**跨表关联读取**（`qms_standard_item.standard_id` → `qms_standard`，当前 `qms_standard_item` 无任何接口，与 `qms_standard` 同属这一批）；
+- 需要**审计留痕或状态时间轴**（终态动作要写 `before_value`/`after_value`）。
+
+> 备注：`src_qms.qms_standard_item`（`V35`）与上述 5 张表同属一批，同样无实体、无接口，由同一通道覆盖；本登记以计划 00 · F4-06 点名的 5 张表为准，`qms_standard_item` 在其父表 `qms_standard` 升为实体时一并处理。
+
 ### 关键设计取舍：不合格 → 库存状态由 QMS 单向下推
 
 `QmsLifecycleService.judge()` 是本模块最有价值的一段逻辑，它把「质量结论」翻译成「库存状态」，用一个幂等键前缀串联：

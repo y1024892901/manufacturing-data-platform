@@ -11,6 +11,7 @@ import com.mfg.security.config.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,8 +21,8 @@ import java.time.LocalDate;
 public class WorkReportController {
     private final WorkReportRepository reports;
     private final WorkOrderRepository workOrders;
-    @GetMapping public ApiResponse<Page<WorkReport>> page(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) { return ApiResponse.ok(reports.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(200, size)))); }
-    @PostMapping public ApiResponse<WorkReport> create(@RequestBody WorkReport report) {
+    @GetMapping @PreAuthorize("hasAuthority('MES:WORK_REPORT:VIEW')") public ApiResponse<Page<WorkReport>> page(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) { return ApiResponse.ok(reports.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(200, size)))); }
+    @PostMapping @PreAuthorize("hasAuthority('MES:WORK_REPORT:CREATE')") public ApiResponse<WorkReport> create(@RequestBody WorkReport report) {
         if (reports.existsByReportNo(report.getReportNo())) throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "报工单号已存在");
         WorkOrder workOrder = workOrders.findAll().stream().filter(w -> report.getWorkOrderNo().equals(w.getWorkOrderNo())).findFirst().orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "MES 工单不存在"));
         if (!"STARTED".equals(workOrder.getStatus())) throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有开工工单可登记报工");

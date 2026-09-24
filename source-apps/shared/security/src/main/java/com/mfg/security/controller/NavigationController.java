@@ -5,6 +5,7 @@ import com.mfg.common.api.ErrorCode;
 import com.mfg.common.exception.BizException;
 import com.mfg.security.config.CurrentUser;
 import com.mfg.security.principal.LoginUser;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +32,7 @@ public class NavigationController {
     );
 
     @GetMapping("/navigation")
+    @PreAuthorize("hasAuthority('SYS:NAV:VIEW')")
     public ApiResponse<List<MenuItem>> navigation(@RequestParam String system) {
         String code = system.toLowerCase(Locale.ROOT);
         LoginUser user = CurrentUser.get();

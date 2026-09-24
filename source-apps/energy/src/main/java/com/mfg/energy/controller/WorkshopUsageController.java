@@ -6,6 +6,7 @@ import com.mfg.common.exception.BizException;
 import com.mfg.energy.entity.WorkshopUsage;
 import com.mfg.energy.repo.WorkshopUsageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -15,8 +16,8 @@ import java.util.List;
 @RestController @RequestMapping("/api/energy/workshop-usages") @RequiredArgsConstructor
 public class WorkshopUsageController {
     private final WorkshopUsageRepository usages;
-    @GetMapping public ApiResponse<List<WorkshopUsage>> list() { return ApiResponse.ok(usages.findAll()); }
-    @PostMapping public ApiResponse<WorkshopUsage> create(@RequestBody WorkshopUsage usage) {
+    @GetMapping @PreAuthorize("hasAuthority('ENERGY:WORKSHOP_USAGE:VIEW')") public ApiResponse<List<WorkshopUsage>> list() { return ApiResponse.ok(usages.findAll()); }
+    @PostMapping @PreAuthorize("hasAuthority('ENERGY:WORKSHOP_USAGE:CREATE')") public ApiResponse<WorkshopUsage> create(@RequestBody WorkshopUsage usage) {
         usage.setStatDate(usage.getStatDate() == null ? LocalDate.now() : usage.getStatDate());
         usage.setEnergyType(usage.getEnergyType() == null ? "ELECTRIC" : usage.getEnergyType());
         usage.setUnitCode(usage.getUnitCode() == null ? "KWH" : usage.getUnitCode());

@@ -4,20 +4,20 @@
 
 ## 一句话结论
 
-EAM 已跑通「设备建档 → 故障上报 → 维修完工 → 设备恢复」这条最小闭环（12 个接口、4 张业务表），
+EAM 已跑通「设备建档 → 故障上报 → 维修完工 → 设备恢复」这条最小闭环（12 个接口、5 张业务表），
 但**只用了 entity/repo/controller 三层**，服务层、审批、事件、报表四个方向均为空白，尚未达到最低验收标准。
 
 ## 已实现
 
 ### 分层文件统计
 
-`source-apps/eam/src/main/java/com/mfg/eam/` 下共 **11 个 Java 文件**：
+`source-apps/eam/src/main/java/com/mfg/eam/` 下共 **13 个 Java 文件**：
 
 | 分层 | 文件数 | 关键类 |
 |---|---|---|
 | `controller/` | 2 | `EquipmentController`、`EquipmentRepairController` |
-| `entity/` | 4 | `Equipment`、`EquipmentFault`、`EquipmentInspection`、`EquipmentRepair` |
-| `repo/` | 4 | `EquipmentRepository`、`EquipmentFaultRepository`、`EquipmentInspectionRepository`、`EquipmentRepairRepository` |
+| `entity/` | 5 | `Equipment`、`EquipmentFault`、`EquipmentInspection`、`EquipmentRepair`、`EquipmentStatusLog` |
+| `repo/` | 5 | `EquipmentRepository`、`EquipmentFaultRepository`、`EquipmentInspectionRepository`、`EquipmentRepairRepository`、`EquipmentStatusLogRepository` |
 | 其他 | 1 | `package-info.java` |
 | `domain/` | **0** | 未实现 |
 | `service/` | **0** | 未实现 |
@@ -69,20 +69,21 @@ EAM 已跑通「设备建档 → 故障上报 → 维修完工 → 设备恢复�
 
 | 实体 | 表 | 关键字段 |
 |---|---|---|
-| `Equipment` | `src_eam.eam_equipment` | `equipment_code`(唯一)、`equipment_name`、`equipment_model`、`equipment_type`、`workshop_code`、`work_center`、`location_desc`、`capacity_per_hour`、`equipment_status`(默认 `IDLE`)、`health_score`、`health_level` |
-| `EquipmentFault` | `src_eam.eam_fault` | `fault_no`、`equipment_code`、`fault_type`、`fault_level`、`fault_desc`、`fault_time`、`work_order_no`、`prod_order_no`、`operation_code`、`fault_status`(默认 `OPEN`)、`reported_by` |
-| `EquipmentInspection` | `src_eam.eam_inspection` | `inspection_no`、`equipment_code`、`inspection_type`、`plan_date`、`actual_date`、`inspection_result`、`abnormal_desc`、`inspector_code`、`is_missed`(默认 `false`) |
-| `EquipmentRepair` | `src_eam.eam_repair` | `repair_no`、`fault_no`、`equipment_code`、`repair_start_time`、`repair_end_time`、`downtime_minutes`、`repair_type`、`repair_content`、`replaced_parts`、`repair_cost`、`maintenance_hours`、`repairman_code`、`repair_result`、`remark` |
+| `Equipment` | `src_eam.eam_equipment` | `equipment_code`(唯一)、`equipment_name`、`equipment_model`、`equipment_type`、`workshop_code`、`work_center`、`location_desc`、`capacity_per_hour`、`equipment_status`(默认 `IDLE`)、`health_score`、`health_level`、`purchase_date`、`purchase_price`、`warranty_end_date`、`maintenance_cycle_days`、`last_maintenance_date`、`created_at`、`updated_at` |
+| `EquipmentFault` | `src_eam.eam_fault` | `fault_no`、`equipment_code`、`fault_type`、`fault_level`、`fault_desc`、`fault_cause`、`fault_time`、`work_order_no`、`prod_order_no`、`operation_code`、`fault_status`(默认 `OPEN`)、`reported_by`、`created_at`、`updated_at` |
+| `EquipmentInspection` | `src_eam.eam_inspection` | `inspection_no`、`equipment_code`、`inspection_type`、`plan_date`、`actual_date`、`inspection_result`、`abnormal_desc`、`check_items`(JSON，按 `String` 映射)、`inspector_code`、`is_missed`(默认 `false`)、`created_at` |
+| `EquipmentRepair` | `src_eam.eam_repair` | `repair_no`、`fault_no`、`equipment_code`、`repair_start_time`、`repair_end_time`、`downtime_minutes`、`repair_type`、`repair_content`、`replaced_parts`、`repair_cost`、`maintenance_hours`、`repairman_code`、`repair_result`、`remark`、`created_at` |
+| `EquipmentStatusLog` | `src_eam.eam_equipment_status_log` | `equipment_code`、`status_code`、`start_time`、`end_time`(空=进行中)、`duration_minutes`、`fault_no`、`work_order_no`、`remark`、`created_at` |
 
 **建表来源（重要）**：这 4 张表**不在 Flyway 迁移里**，由
 `infra/db-init/05_business_systems_2.sql` 建库脚本创建（全库 27 个 Flyway 脚本 V12–V38 中没有任何 `src_eam` 语句）。
 Flyway 的基线版本是 11，V1–V11 正是 `infra/db-init/` 下的脚本，两者是**两套并行的建表通道**。
 
-同库中还有 2 张**有表无代码**的 EAM 表：
+同库中还有 1 张**有表无代码**的表，以及 1 张已补实体但尚无写入点的表：
 
 | 表 | 状态 |
 |---|---|
-| `src_eam.eam_equipment_status_log` | 有 DDL、**无实体无接口**。设计意图是设备状态时段台账（可用率计算基础），当前状态切换不落台账 |
+| `src_eam.eam_equipment_status_log` | 有 DDL，**实体与 repo 已补**（`EquipmentStatusLog` + `EquipmentStatusLogRepository`，计划 00 · F4-08）：可经 JPA 查询设备的状态时段。但那只是映射——**无接口，且状态切换仍不落台账**，写入点属计划 05 范围（缺陷 #8） |
 | `src_eam.eam_md_material` | 有 DDL，由 MDM 侧 `MasterDataDistributor.writeToEam()` 写入，EAM 只读 |
 
 ## 对照最低验收
@@ -104,8 +105,8 @@ Flyway 的基线版本是 11，V1–V11 正是 `infra/db-init/` 下的脚本，�
 2. **无 `domain/` 层**。设备状态、故障状态、点检结果、维修结论四组状态字面量散落在 Controller 与实体默认值里，无枚举、无状态机、无合法迁移校验（例如可把 `SCRAPPED` 设备直接改回 `RUNNING`）。
 3. **无审批**。`EAM:FAULT:APPROVE` 权限点已种子化，但没有 `wf_definition`/`wf_node` 定义，重大故障无法走审批。
 4. **无事件**。故障停机不影响任何下游系统的交期计算，`prod_order_no` 字段只是被存下来、没人消费。
-5. **`eam_equipment_status_log` 空转**。状态切换不落台账，因此「设备可用率」「状态时段重叠检测（治理规则 E02）」都缺数据源。
+5. **`eam_equipment_status_log` 空转**。实体与 repo 已补（计划 00 · F4-08），但状态切换仍不落台账，因此「设备可用率」「状态时段重叠检测（治理规则 E02）」都缺数据源——缺的是**写入点**，不是映射。
 6. **点检漏检不成立**。`is_missed` 恒为 `false`，无计划生成、无超期扫描（治理规则 E04 无输入）。
-7. **实体字段少于表结构**：`eam_equipment` 的 `purchase_date`/`purchase_price`/`warranty_end_date`/`maintenance_cycle_days`/`last_maintenance_date`、`eam_fault` 的 `fault_cause`、`eam_inspection` 的 `check_items`(JSON) 在 DDL 中存在，但**实体未映射**，接口层无法读写。
+7. **实体字段与表结构已对齐，但接口仍不读写**（计划 00 · F4-08 补齐映射）：`eam_equipment` 的 `purchase_date`/`purchase_price`/`warranty_end_date`/`maintenance_cycle_days`/`last_maintenance_date`、`eam_fault` 的 `fault_cause`、`eam_inspection` 的 `check_items`(JSON，按 `String` 映射) 现已映射进实体。**缺口从「映射缺失」转为「读写缺失」**：12 个接口没有一个接收或返回这些字段，资产信息、故障原因、点检项在接口层依旧不可见。
 8. **备件与可靠性整块缺失**：无备件领用/归还/最低库存，`repair_cost`/`replaced_parts` 只存不算；无 MTBF/MTTR，`health_score` 依赖数仓回写而数仓侧尚无产出。
 9. **查询能力薄弱**：`EquipmentRepairController.create` 用 `faults.findAll().stream().filter(...)` 全表扫描找故障单，数据量上来后是性能问题。

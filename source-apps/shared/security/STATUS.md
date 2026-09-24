@@ -1,5 +1,11 @@
 # shared/security/ — 目前进展
 
+## 2026-09-23 执行更新
+
+新增 OperationAuditService.recordTransition()，在调用方事务中记录 before_value/after_value 状态 JSON，供 MDM 停用动作复用。SysRole 补 created_at 只读映射。
+
+以下为 2026-09-22 基线详情，涉及上述内容时以本节为准。
+
 > 截至 2026-09-22 · 对应整体计划见 [PLAN.md](PLAN.md)
 
 ## 一句话结论

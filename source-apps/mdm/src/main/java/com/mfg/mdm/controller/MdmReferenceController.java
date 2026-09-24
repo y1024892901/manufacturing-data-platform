@@ -13,12 +13,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MdmReferenceController {
     private final MdmReferenceService service;
-    @GetMapping("/{type}") @PreAuthorize("hasAnyAuthority('MDM:MATERIAL:VIEW','MDM:ROUTING:VIEW') or hasRole('ADMIN')")
+    @GetMapping("/{type}") @PreAuthorize("hasAuthority('MDM:BASE_DATA:VIEW')")
     public ApiResponse<List<Map<String,Object>>> list(@PathVariable String type){return ApiResponse.ok(service.list(type));}
-    @PostMapping("/{type}") @PreAuthorize("hasAnyAuthority('MDM:MATERIAL:CREATE','MDM:ROUTING:UPDATE') or hasRole('ADMIN')")
+    @PostMapping("/{type}") @PreAuthorize("hasAuthority('MDM:BASE_DATA:CREATE')")
     public ApiResponse<Map<String,Object>> create(@PathVariable String type,@RequestBody Map<String,Object> input){return ApiResponse.ok(service.create(type,input));}
-    @PutMapping("/{type}/{id}") @PreAuthorize("hasAnyAuthority('MDM:MATERIAL:UPDATE','MDM:ROUTING:UPDATE') or hasRole('ADMIN')")
+    @PutMapping("/{type}/{id}") @PreAuthorize("hasAuthority('MDM:BASE_DATA:UPDATE')")
     public ApiResponse<Map<String,Object>> update(@PathVariable String type,@PathVariable Long id,@RequestBody Map<String,Object> input){return ApiResponse.ok(service.update(type,id,input));}
-    @DeleteMapping("/{type}/{id}") @PreAuthorize("hasAnyAuthority('MDM:MATERIAL:UPDATE','MDM:ROUTING:UPDATE') or hasRole('ADMIN')")
+    @DeleteMapping("/{type}/{id}") @PreAuthorize("hasAuthority('MDM:BASE_DATA:DELETE')")
     public ApiResponse<Void> disable(@PathVariable String type,@PathVariable Long id){service.disable(type,id);return ApiResponse.ok();}
 }

@@ -9,6 +9,7 @@ import com.mfg.qms.repo.ReworkOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,10 +20,10 @@ public class ReworkController {
     private final ReworkOrderRepository reworks;
     private final DefectRecordRepository defects;
 
-    @GetMapping public ApiResponse<Page<ReworkOrder>> page(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
+    @GetMapping @PreAuthorize("hasAuthority('QMS:REWORK:VIEW')") public ApiResponse<Page<ReworkOrder>> page(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(reworks.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(200, size))));
     }
-    @PostMapping public ApiResponse<ReworkOrder> create(@RequestBody ReworkOrder order) {
+    @PostMapping @PreAuthorize("hasAuthority('QMS:REWORK:CREATE')") public ApiResponse<ReworkOrder> create(@RequestBody ReworkOrder order) {
         if (reworks.existsByReworkNo(order.getReworkNo())) throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "返工单号已存在");
         var defect = defects.findAll().stream().filter(d -> order.getDefectNo().equals(d.getDefectNo())).findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "不合格品记录不存在"));
@@ -31,11 +32,11 @@ public class ReworkController {
         order.setMaterialCode(defect.getMaterialCode()); order.setStatus("PENDING");
         return ApiResponse.ok(reworks.save(order));
     }
-    @PostMapping("/{id}/start") public ApiResponse<ReworkOrder> start(@PathVariable Long id) {
+    @PostMapping("/{id}/start") @PreAuthorize("hasAuthority('QMS:REWORK:START')") public ApiResponse<ReworkOrder> start(@PathVariable Long id) {
         ReworkOrder order = find(id); if (!"PENDING".equals(order.getStatus())) throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "当前返工单不可开工");
         order.setStatus("DOING"); order.setStartTime(LocalDateTime.now()); return ApiResponse.ok(reworks.save(order));
     }
-    @PostMapping("/{id}/complete") public ApiResponse<ReworkOrder> complete(@PathVariable Long id, @RequestParam(defaultValue = "DONE") String status) {
+    @PostMapping("/{id}/complete") @PreAuthorize("hasAuthority('QMS:REWORK:COMPLETE')") public ApiResponse<ReworkOrder> complete(@PathVariable Long id, @RequestParam(defaultValue = "DONE") String status) {
         ReworkOrder order = find(id); if (!"DOING".equals(order.getStatus())) throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有进行中的返工单可完工");
         if (!"DONE".equals(status) && !"SCRAPPED".equals(status)) throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "返工结论只能为 DONE 或 SCRAPPED");
         order.setStatus(status); order.setEndTime(LocalDateTime.now()); return ApiResponse.ok(reworks.save(order));

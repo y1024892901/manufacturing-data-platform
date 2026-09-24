@@ -40,6 +40,9 @@ public class SysRole {
     @Column(name = "sort_no", nullable = false)
     private Integer sortNo = 0;
 
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private java.time.LocalDateTime createdAt;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "sys_role_permission",

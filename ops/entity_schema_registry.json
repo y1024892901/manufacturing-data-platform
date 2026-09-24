@@ -1,0 +1,2533 @@
+{
+  "mfg_ads.ads_business_glossary": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "definition",
+      "id",
+      "is_active",
+      "related_metrics",
+      "related_tables",
+      "source_doc",
+      "term_code",
+      "term_name",
+      "term_type",
+      "updated_at"
+    ]
+  },
+  "mfg_ads.ads_dq_issue": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "detected_at",
+      "id",
+      "is_resolved",
+      "issue_detail",
+      "issue_fields",
+      "pk_value",
+      "resolved_at",
+      "resolved_by",
+      "rule_id",
+      "rule_name",
+      "run_id",
+      "severity",
+      "target_table"
+    ]
+  },
+  "mfg_ads.ads_dq_rule_pass_rate": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "checked_at",
+      "duration_ms",
+      "failed_rows",
+      "id",
+      "pass_rate",
+      "passed_rows",
+      "rule_id",
+      "rule_name",
+      "run_id",
+      "run_status",
+      "severity",
+      "stat_date",
+      "target_table",
+      "total_rows"
+    ]
+  },
+  "mfg_ads.ads_lineage_snapshot": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "column_lineage",
+      "description",
+      "downstream_nodes",
+      "id",
+      "last_materialized",
+      "layer_db",
+      "node_id",
+      "node_name",
+      "node_type",
+      "owner",
+      "row_count",
+      "snapshot_at",
+      "upstream_nodes"
+    ]
+  },
+  "mfg_ads.ads_recon_diff": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "checked_at",
+      "diff_count",
+      "diff_ratio",
+      "diff_value",
+      "from_layer",
+      "from_value",
+      "id",
+      "recon_name",
+      "run_id",
+      "sample_keys",
+      "to_layer",
+      "to_value"
+    ]
+  },
+  "mfg_app.app_agent_session": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "answer",
+      "cited_sources",
+      "duration_ms",
+      "finished_at",
+      "id",
+      "question",
+      "scene",
+      "session_id",
+      "started_at",
+      "status",
+      "tool_calls",
+      "total_steps",
+      "user_name"
+    ]
+  },
+  "mfg_app.app_disposition": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "actual_delay_days",
+      "actual_reason",
+      "biz_id",
+      "biz_type",
+      "created_at",
+      "disposition",
+      "handled_at",
+      "handled_by",
+      "id",
+      "is_effective",
+      "predicted_reason",
+      "risk_level"
+    ]
+  },
+  "mfg_app.app_llm_call_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "call_type",
+      "called_at",
+      "called_by",
+      "completion_tokens",
+      "cost_estimate",
+      "duration_ms",
+      "error_message",
+      "id",
+      "model_name",
+      "prompt_tokens",
+      "provider",
+      "scene",
+      "session_id",
+      "status",
+      "total_tokens"
+    ]
+  },
+  "mfg_app.app_mcp_call_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "called_at",
+      "called_by",
+      "denied_reason",
+      "duration_ms",
+      "id",
+      "is_truncated",
+      "result_rows",
+      "session_id",
+      "sql_text",
+      "status",
+      "tool_name",
+      "tool_params"
+    ]
+  },
+  "mfg_app.app_vector_store": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "collection",
+      "content_hash",
+      "doc_content",
+      "doc_id",
+      "doc_title",
+      "embedding",
+      "embedding_dim",
+      "embedding_model",
+      "id",
+      "keywords",
+      "metadata",
+      "updated_at"
+    ]
+  },
+  "mfg_auth.sys_data_scope": {
+    "mode": "sql",
+    "plan": "00",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/security/src/main/java/com/mfg/security/scope/DataScopeAspect.java"
+    ],
+    "columns": [
+      "id",
+      "resource_code",
+      "role_id",
+      "scope_field",
+      "scope_type"
+    ]
+  },
+  "mfg_auth.sys_role_permission": {
+    "mode": "association",
+    "plan": "00",
+    "reason": "由 SysUser/SysRole 的 JPA 关联注解维护的连接表，无独立领域实体。",
+    "evidence": [
+      "source-apps/shared/security/src/main/java/com/mfg/security/entity/SysRole.java"
+    ],
+    "columns": [
+      "id",
+      "permission_id",
+      "role_id"
+    ]
+  },
+  "mfg_auth.sys_user_role": {
+    "mode": "association",
+    "plan": "00",
+    "reason": "由 SysUser/SysRole 的 JPA 关联注解维护的连接表，无独立领域实体。",
+    "evidence": [
+      "source-apps/shared/security/src/main/java/com/mfg/security/entity/SysUser.java"
+    ],
+    "columns": [
+      "granted_at",
+      "granted_by",
+      "id",
+      "role_id",
+      "user_id"
+    ]
+  },
+  "mfg_auth.sys_user_system": {
+    "mode": "association",
+    "plan": "00",
+    "reason": "由 SysUser/SysRole 的 JPA 关联注解维护的连接表，无独立领域实体。",
+    "evidence": [
+      "source-apps/shared/security/src/main/java/com/mfg/security/entity/SysUser.java"
+    ],
+    "columns": [
+      "id",
+      "system_code",
+      "user_id"
+    ]
+  },
+  "mfg_dwd.dim_key_mapping": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_key",
+      "dim_name",
+      "id",
+      "is_current",
+      "surrogate_key",
+      "valid_from",
+      "valid_to"
+    ]
+  },
+  "mfg_dws.metric_definition": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "created_at",
+      "definition",
+      "denominator_expr",
+      "dim_grain",
+      "filter_condition",
+      "id",
+      "is_active",
+      "metric_code",
+      "metric_name",
+      "numerator_expr",
+      "owner_dept",
+      "refresh_freq",
+      "source_table",
+      "unit",
+      "updated_at",
+      "value_range_max",
+      "value_range_min"
+    ]
+  },
+  "mfg_meta.meta_audit_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "action",
+      "after_value",
+      "before_value",
+      "id",
+      "object_id",
+      "object_type",
+      "operated_at",
+      "operator"
+    ]
+  },
+  "mfg_meta.meta_column": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_name",
+      "data_type",
+      "dst_name",
+      "id",
+      "in_scope",
+      "is_primary_key",
+      "is_sensitive",
+      "ordinal_position",
+      "remarks",
+      "src_name",
+      "table_id"
+    ]
+  },
+  "mfg_meta.meta_rule": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "action_desc",
+      "business_domain",
+      "created_at",
+      "expression",
+      "hit_count",
+      "id",
+      "is_enabled",
+      "rule_id",
+      "rule_name",
+      "rule_type",
+      "severity",
+      "target_table",
+      "updated_at"
+    ]
+  },
+  "mfg_meta.meta_system": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "created_at",
+      "db_name",
+      "description",
+      "id",
+      "is_enabled",
+      "is_master_data",
+      "owner_dept",
+      "owner_person",
+      "system_code",
+      "system_name",
+      "system_type",
+      "updated_at"
+    ]
+  },
+  "mfg_meta.meta_table": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "business_domain",
+      "created_at",
+      "id",
+      "last_synced_at",
+      "ods_table",
+      "primary_key_cols",
+      "row_count",
+      "src_table",
+      "status",
+      "sync_mode",
+      "system_code",
+      "table_name_cn",
+      "table_role",
+      "updated_at",
+      "watermark_col"
+    ]
+  },
+  "mfg_ods.ods_change_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "after_hash",
+      "batch_id",
+      "before_hash",
+      "change_type",
+      "changed_at",
+      "id",
+      "ods_table",
+      "pk_value"
+    ]
+  },
+  "mfg_ods.ods_table_registry": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "created_at",
+      "id",
+      "is_active",
+      "last_batch_id",
+      "last_extract_at",
+      "ods_table",
+      "primary_key_cols",
+      "row_count",
+      "src_database",
+      "src_system",
+      "src_table",
+      "watermark_col"
+    ]
+  },
+  "mfg_ops.biz_consumer_offset": {
+    "mode": "sql",
+    "plan": "00",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/integration/BusinessEventConsumerScheduler.java"
+    ],
+    "columns": [
+      "consumed_rows",
+      "consumer_name",
+      "event_type",
+      "id",
+      "last_inbox_id",
+      "updated_at"
+    ]
+  },
+  "mfg_ops.biz_inbox": {
+    "mode": "sql",
+    "plan": "00",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/integration/BusinessEventConsumerScheduler.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/integration/BusinessEventService.java"
+    ],
+    "columns": [
+      "aggregate_id",
+      "aggregate_type",
+      "consume_status",
+      "consumed_at",
+      "consumer_name",
+      "error_message",
+      "event_id",
+      "event_type",
+      "id",
+      "lease_until",
+      "next_retry_at",
+      "payload",
+      "received_at",
+      "retry_count",
+      "source_system",
+      "status",
+      "target_system",
+      "trace_id"
+    ]
+  },
+  "mfg_ops.biz_outbox": {
+    "mode": "sql",
+    "plan": "00",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/integration/BusinessEventService.java"
+    ],
+    "columns": [
+      "aggregate_id",
+      "aggregate_type",
+      "error_message",
+      "event_id",
+      "event_type",
+      "event_version",
+      "id",
+      "occurred_at",
+      "payload",
+      "processed_at",
+      "retry_count",
+      "source_system",
+      "status",
+      "target_system",
+      "trace_id"
+    ]
+  },
+  "mfg_ops.ops_dw_run_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "depends_on",
+      "error_message",
+      "finished_at",
+      "id",
+      "layer",
+      "materialization",
+      "model_name",
+      "rows_affected",
+      "run_id",
+      "started_at",
+      "status"
+    ]
+  },
+  "mfg_ops.ops_ingest_run_log": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "batch_id",
+      "error_message",
+      "extract_rows",
+      "finished_at",
+      "id",
+      "mode",
+      "ods_table",
+      "src_system",
+      "src_table",
+      "started_at",
+      "status",
+      "updated_rows",
+      "written_rows"
+    ]
+  },
+  "mfg_ops.ops_injection_manifest": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "id",
+      "inject_detail",
+      "injected_at",
+      "injector",
+      "primary_key",
+      "rule_id",
+      "run_id",
+      "src_system",
+      "src_table"
+    ]
+  },
+  "mfg_ops.ops_watermark": {
+    "mode": "out_of_scope",
+    "plan": "P6/P7",
+    "reason": "P6/P7 已暂缓；仅保留原初始化表，不作为 P0–P5 实体验收对象。",
+    "evidence": [
+      "docs/implementation-roadmap.md"
+    ],
+    "columns": [
+      "consecutive_fail",
+      "id",
+      "last_batch_id",
+      "last_row_count",
+      "last_watermark",
+      "src_system",
+      "status",
+      "table_name",
+      "updated_at"
+    ]
+  },
+  "src_crm.crm_competitor": {
+    "mode": "planned",
+    "plan": "04",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "competitor_name",
+      "id",
+      "opportunity_no",
+      "quoted_amount",
+      "strengths",
+      "weaknesses"
+    ]
+  },
+  "src_crm.crm_complaint": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/controller/CrmP2Controller.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "batch_no",
+      "closed_at",
+      "complaint_no",
+      "created_at",
+      "created_by",
+      "customer_code",
+      "customer_feedback",
+      "delivery_no",
+      "id",
+      "problem_desc",
+      "product_code",
+      "responsible_dept",
+      "sales_order_no",
+      "severity",
+      "solution",
+      "status"
+    ]
+  },
+  "src_crm.crm_contract": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/controller/CrmP2Controller.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "attachment_name",
+      "change_reason",
+      "contract_name",
+      "contract_no",
+      "created_at",
+      "created_by",
+      "currency",
+      "customer_code",
+      "customer_name",
+      "delivery_terms",
+      "effective_date",
+      "erp_sales_order_no",
+      "expire_date",
+      "id",
+      "opportunity_no",
+      "payment_terms",
+      "penalty_terms",
+      "previous_contract_id",
+      "quotation_id",
+      "quotation_no",
+      "status",
+      "tax_amount",
+      "updated_at",
+      "version_no",
+      "workflow_instance_id"
+    ]
+  },
+  "src_crm.crm_contract_change": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "change_reason",
+      "changed_at",
+      "changed_by",
+      "contract_id",
+      "from_version",
+      "id",
+      "to_version"
+    ]
+  },
+  "src_crm.crm_lead": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/controller/CrmP2Controller.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "contact_name",
+      "contact_phone",
+      "converted_opportunity_no",
+      "created_at",
+      "created_by",
+      "customer_name",
+      "expected_close_date",
+      "id",
+      "intent_level",
+      "invalid_reason",
+      "lead_no",
+      "owner_user",
+      "score",
+      "source_channel",
+      "status",
+      "updated_at"
+    ]
+  },
+  "src_crm.crm_lead_assignment": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "assigned_at",
+      "assigned_by",
+      "from_user",
+      "id",
+      "lead_id",
+      "reason",
+      "to_user"
+    ]
+  },
+  "src_crm.crm_lead_follow": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "content",
+      "follow_at",
+      "follow_type",
+      "follow_user",
+      "id",
+      "lead_id",
+      "next_follow_at"
+    ]
+  },
+  "src_crm.crm_md_customer": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "contact_person",
+      "contact_phone",
+      "credit_limit",
+      "customer_code",
+      "customer_level",
+      "customer_name",
+      "master_version",
+      "payment_terms",
+      "region",
+      "short_name",
+      "synced_at"
+    ]
+  },
+  "src_crm.crm_opportunity_product": {
+    "mode": "planned",
+    "plan": "04",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "expected_price",
+      "expected_qty",
+      "id",
+      "opportunity_no",
+      "product_code",
+      "product_name",
+      "unit_code"
+    ]
+  },
+  "src_crm.crm_payment_plan": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "contract_id",
+      "due_date",
+      "id",
+      "period_no",
+      "plan_amount",
+      "plan_ratio",
+      "received_amount",
+      "status"
+    ]
+  },
+  "src_crm.crm_quotation": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/controller/CrmP2Controller.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/controller/OpportunityController.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "currency",
+      "customer_code",
+      "discount_rate",
+      "gross_margin_rate",
+      "id",
+      "opportunity_no",
+      "payment_terms",
+      "quotation_no",
+      "status",
+      "tax_rate",
+      "total_amount",
+      "total_cost",
+      "updated_at",
+      "valid_until",
+      "version_no",
+      "workflow_instance_id"
+    ]
+  },
+  "src_crm.crm_quotation_line": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "id",
+      "line_amount",
+      "line_cost",
+      "line_no",
+      "product_code",
+      "product_name",
+      "qty",
+      "quotation_id",
+      "sales_price",
+      "standard_cost",
+      "standard_price",
+      "unit_code"
+    ]
+  },
+  "src_crm.crm_sales_forecast": {
+    "mode": "planned",
+    "plan": "04",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "dept_code",
+      "forecast_amount",
+      "forecast_month",
+      "generated_at",
+      "id",
+      "owner_user",
+      "product_code",
+      "weighted_amount"
+    ]
+  },
+  "src_eam.eam_md_material": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "master_version",
+      "material_code",
+      "material_name",
+      "synced_at"
+    ]
+  },
+  "src_energy.energy_md_equipment": {
+    "mode": "planned",
+    "plan": "07",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "capacity_per_hour",
+      "equipment_code",
+      "equipment_name",
+      "master_version",
+      "synced_at",
+      "workshop_code"
+    ]
+  },
+  "src_erp.erp_atp_snapshot": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "accepted",
+      "available_qty",
+      "basis_json",
+      "created_at",
+      "exception_reason",
+      "exception_status",
+      "id",
+      "line_no",
+      "material_code",
+      "promised_date",
+      "promised_qty",
+      "requested_qty",
+      "result",
+      "sales_order_no"
+    ]
+  },
+  "src_erp.erp_credit_check": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "available_credit",
+      "checked_at",
+      "customer_code",
+      "exception_reason",
+      "exception_status",
+      "id",
+      "order_amount",
+      "overdue_amount",
+      "result",
+      "risk_level",
+      "sales_order_no",
+      "workflow_instance_id"
+    ]
+  },
+  "src_erp.erp_customer_credit": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "credit_limit",
+      "customer_code",
+      "id",
+      "overdue_amount",
+      "payment_days",
+      "risk_level",
+      "status",
+      "updated_at",
+      "used_amount"
+    ]
+  },
+  "src_erp.erp_invoice": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "created_at",
+      "created_by",
+      "customer_code",
+      "id",
+      "invoice_date",
+      "invoice_no",
+      "sales_order_no",
+      "status",
+      "tax_amount",
+      "voucher_no"
+    ]
+  },
+  "src_erp.erp_md_bom": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "base_qty",
+      "bom_code",
+      "bom_version",
+      "is_current",
+      "master_version",
+      "product_code",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_md_bom_line": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "bom_code",
+      "bom_version",
+      "child_material_code",
+      "line_no",
+      "qty_per",
+      "scrap_rate",
+      "synced_at",
+      "unit_code"
+    ]
+  },
+  "src_erp.erp_md_cost_center": {
+    "mode": "planned",
+    "plan": "04",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "cc_code",
+      "cc_name",
+      "master_version",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_md_customer": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "credit_limit",
+      "credit_used",
+      "customer_code",
+      "customer_name",
+      "master_version",
+      "payment_terms",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_md_material": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "master_version",
+      "material_code",
+      "material_name",
+      "material_spec",
+      "material_type",
+      "safety_stock",
+      "standard_price",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_md_product": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "lifecycle_status",
+      "master_version",
+      "product_code",
+      "product_model",
+      "product_name",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_md_supplier": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "lead_time_days",
+      "master_version",
+      "supplier_code",
+      "supplier_name",
+      "synced_at"
+    ]
+  },
+  "src_erp.erp_mrp_requirement": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "available_qty",
+      "gross_requirement",
+      "id",
+      "incoming_qty",
+      "level_no",
+      "material_code",
+      "material_type",
+      "net_requirement",
+      "parent_material_code",
+      "required_date",
+      "run_id",
+      "safety_stock",
+      "shortage_flag"
+    ]
+  },
+  "src_erp.erp_mrp_run": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "factory_code",
+      "finished_at",
+      "id",
+      "plan_date",
+      "run_no",
+      "run_type",
+      "sales_order_no",
+      "started_at",
+      "status"
+    ]
+  },
+  "src_erp.erp_order_cost": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "cost_center_code",
+      "cost_type",
+      "created_at",
+      "id",
+      "sales_order_no",
+      "source_no"
+    ]
+  },
+  "src_erp.erp_payable": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "created_at",
+      "due_date",
+      "id",
+      "paid_amount",
+      "payable_no",
+      "source_order_no",
+      "status",
+      "supplier_code"
+    ]
+  },
+  "src_erp.erp_plan_suggestion": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "converted_order_no",
+      "created_at",
+      "id",
+      "material_code",
+      "quantity",
+      "required_date",
+      "run_id",
+      "source_sales_order_no",
+      "status",
+      "suggestion_no",
+      "suggestion_type",
+      "unit_code"
+    ]
+  },
+  "src_erp.erp_purchase_requisition": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "created_at",
+      "id",
+      "material_code",
+      "quantity",
+      "required_date",
+      "requisition_no",
+      "source_suggestion_no",
+      "status"
+    ]
+  },
+  "src_erp.erp_receipt": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "bank_reference",
+      "created_at",
+      "created_by",
+      "customer_code",
+      "id",
+      "receipt_date",
+      "receipt_no",
+      "status",
+      "unapplied_amount",
+      "voucher_no"
+    ]
+  },
+  "src_erp.erp_receivable": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/controller/ErpP2Controller.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "cc_code",
+      "created_at",
+      "created_by",
+      "customer_code",
+      "customer_name",
+      "due_date",
+      "id",
+      "invoice_amount",
+      "invoice_date",
+      "invoice_no",
+      "outstanding_amount",
+      "overdue_days",
+      "receivable_no",
+      "received_amount",
+      "sales_order_no",
+      "settle_status",
+      "settled_amount",
+      "status",
+      "updated_at"
+    ]
+  },
+  "src_erp.erp_sales_order_change": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "after_json",
+      "before_json",
+      "change_type",
+      "created_at",
+      "id",
+      "operator",
+      "reason",
+      "sales_order_id"
+    ]
+  },
+  "src_erp.erp_settlement": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "amount",
+      "id",
+      "receipt_id",
+      "receivable_id",
+      "settled_at",
+      "settled_by",
+      "settlement_no",
+      "voucher_no"
+    ]
+  },
+  "src_erp.erp_supply_snapshot": {
+    "mode": "sql",
+    "plan": "04",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "allocated_demand",
+      "available_stock",
+      "confirmed_purchase",
+      "factory_code",
+      "id",
+      "material_code",
+      "planned_production",
+      "supply_date"
+    ]
+  },
+  "src_mdm.md_account_subject": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmReferenceService.java"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "id",
+      "is_leaf",
+      "parent_id",
+      "status",
+      "subject_code",
+      "subject_level",
+      "subject_name",
+      "subject_type",
+      "updated_at",
+      "updated_by",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_change_history": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java"
+    ],
+    "columns": [
+      "action",
+      "after_json",
+      "before_json",
+      "changed_at",
+      "entity_code",
+      "entity_id",
+      "entity_type",
+      "id",
+      "operator"
+    ]
+  },
+  "src_mdm.md_change_request": {
+    "mode": "planned",
+    "plan": "02",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "after_snapshot",
+      "base_version",
+      "before_snapshot",
+      "change_reason",
+      "change_type",
+      "diff_summary",
+      "entity_code",
+      "entity_type",
+      "id",
+      "request_no",
+      "status",
+      "submitted_at",
+      "submitted_by",
+      "target_version"
+    ]
+  },
+  "src_mdm.md_code_mapping": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java"
+    ],
+    "columns": [
+      "created_at",
+      "current_code",
+      "entity_type",
+      "id",
+      "old_code",
+      "status"
+    ]
+  },
+  "src_mdm.md_cost_center": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmReferenceService.java"
+    ],
+    "columns": [
+      "cc_code",
+      "cc_name",
+      "cc_type",
+      "created_at",
+      "created_by",
+      "id",
+      "manager_emp_id",
+      "org_id",
+      "status",
+      "updated_at",
+      "updated_by",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_distribution_log": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/DistributionMonitorService.java",
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "distribute_mode",
+      "distributed_at",
+      "entity_code",
+      "entity_type",
+      "entity_version",
+      "error_message",
+      "id",
+      "row_count",
+      "status",
+      "target_system"
+    ]
+  },
+  "src_mdm.md_employee": {
+    "mode": "planned",
+    "plan": "02",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "email",
+      "emp_code",
+      "emp_name",
+      "id",
+      "mobile",
+      "org_id",
+      "position_name",
+      "status",
+      "updated_at",
+      "updated_by",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_inbox": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmOutboxService.java"
+    ],
+    "columns": [
+      "error_message",
+      "event_id",
+      "id",
+      "processed_at",
+      "received_at",
+      "retry_count",
+      "status",
+      "target_system"
+    ]
+  },
+  "src_mdm.md_merge_record": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java"
+    ],
+    "columns": [
+      "entity_type",
+      "id",
+      "merged_at",
+      "merged_code",
+      "merged_id",
+      "operator",
+      "reason",
+      "survivor_code",
+      "survivor_id"
+    ]
+  },
+  "src_mdm.md_org_unit": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmReferenceService.java"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "id",
+      "manager_user_id",
+      "org_code",
+      "org_level",
+      "org_name",
+      "org_type",
+      "parent_id",
+      "status",
+      "updated_at",
+      "updated_by",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_outbox": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmOutboxService.java"
+    ],
+    "columns": [
+      "aggregate_code",
+      "aggregate_id",
+      "aggregate_type",
+      "aggregate_version",
+      "error_message",
+      "event_id",
+      "event_type",
+      "occurred_at",
+      "payload",
+      "processed_at",
+      "retry_count",
+      "status"
+    ]
+  },
+  "src_mdm.md_partner_contact": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java",
+      "source-apps/crm/src/main/java/com/mfg/crm/service/CrmP2Service.java"
+    ],
+    "columns": [
+      "contact_name",
+      "created_at",
+      "email",
+      "id",
+      "is_primary",
+      "mobile",
+      "partner_id",
+      "partner_type",
+      "position_name",
+      "status",
+      "updated_at"
+    ]
+  },
+  "src_mdm.md_production_version": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java",
+      "source-apps/erp/src/main/java/com/mfg/erp/service/ErpP2Service.java"
+    ],
+    "columns": [
+      "bom_code",
+      "bom_version",
+      "created_at",
+      "created_by",
+      "effective_date",
+      "expire_date",
+      "factory_code",
+      "id",
+      "product_code",
+      "production_version_code",
+      "routing_code",
+      "routing_version",
+      "status",
+      "updated_at",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_reconciliation": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmOutboxService.java"
+    ],
+    "columns": [
+      "checked_at",
+      "entity_code",
+      "event_id",
+      "id",
+      "message",
+      "result",
+      "source_hash",
+      "source_version",
+      "target_hash",
+      "target_system",
+      "target_version"
+    ]
+  },
+  "src_mdm.md_unit": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmReferenceService.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "convert_rate",
+      "created_at",
+      "created_by",
+      "id",
+      "status",
+      "unit_code",
+      "unit_name",
+      "unit_type",
+      "updated_at",
+      "updated_by",
+      "version_no"
+    ]
+  },
+  "src_mdm.md_warehouse": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java"
+    ],
+    "columns": [
+      "created_at",
+      "factory_code",
+      "id",
+      "status",
+      "updated_at",
+      "version_no",
+      "warehouse_code",
+      "warehouse_name",
+      "warehouse_type"
+    ]
+  },
+  "src_mdm.md_work_center": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MdmGovernanceService.java"
+    ],
+    "columns": [
+      "capacity_per_day",
+      "created_at",
+      "id",
+      "status",
+      "updated_at",
+      "version_no",
+      "work_center_code",
+      "work_center_name",
+      "workshop_code"
+    ]
+  },
+  "src_mes.mes_md_material": {
+    "mode": "sql",
+    "plan": "06",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "master_version",
+      "material_code",
+      "material_name",
+      "synced_at"
+    ]
+  },
+  "src_mes.mes_md_routing_operation": {
+    "mode": "sql",
+    "plan": "06",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "default_equipment_code",
+      "is_inspection_op",
+      "master_version",
+      "op_seq",
+      "operation_code",
+      "operation_name",
+      "routing_code",
+      "routing_version",
+      "run_time_min",
+      "synced_at",
+      "work_center"
+    ]
+  },
+  "src_plm.plm_document": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/PlmCatalogService.java"
+    ],
+    "columns": [
+      "confidentiality",
+      "created_at",
+      "created_by",
+      "doc_name",
+      "doc_no",
+      "doc_type",
+      "file_name",
+      "id",
+      "product_code",
+      "released_at",
+      "released_by",
+      "status",
+      "updated_at",
+      "version_no"
+    ]
+  },
+  "src_plm.plm_eco": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/EngineeringChangeChainService.java"
+    ],
+    "columns": [
+      "change_scope",
+      "created_at",
+      "created_by",
+      "eco_no",
+      "eco_title",
+      "ecr_id",
+      "id",
+      "new_version",
+      "product_code",
+      "status",
+      "target_code",
+      "target_type",
+      "updated_at"
+    ]
+  },
+  "src_plm.plm_ecr": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/EngineeringChangeChainService.java"
+    ],
+    "columns": [
+      "change_reason",
+      "created_at",
+      "created_by",
+      "ecr_no",
+      "ecr_title",
+      "id",
+      "planned_effective_date",
+      "problem_desc",
+      "product_code",
+      "proposal",
+      "status",
+      "updated_at",
+      "urgency"
+    ]
+  },
+  "src_plm.plm_engineering_baseline": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/PlmCatalogService.java"
+    ],
+    "columns": [
+      "baseline_name",
+      "baseline_no",
+      "bom_code",
+      "bom_version",
+      "created_at",
+      "created_by",
+      "id",
+      "product_code",
+      "product_version",
+      "released_at",
+      "released_by",
+      "routing_code",
+      "routing_version",
+      "status",
+      "updated_at"
+    ]
+  },
+  "src_plm.plm_impact_analysis": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/EngineeringChangeChainService.java"
+    ],
+    "columns": [
+      "cost_impact",
+      "created_at",
+      "ecr_id",
+      "id",
+      "impact_desc",
+      "impact_type",
+      "object_code",
+      "owner_user",
+      "risk_level",
+      "schedule_impact_days"
+    ]
+  },
+  "src_plm.plm_md_bom": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/controller/PlmStructureController.java",
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "bom_code",
+      "bom_type",
+      "bom_version",
+      "effective_date",
+      "master_version",
+      "product_code",
+      "synced_at"
+    ]
+  },
+  "src_plm.plm_md_bom_line": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/controller/PlmStructureController.java",
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "bom_code",
+      "bom_version",
+      "child_material_code",
+      "line_no",
+      "qty_per",
+      "scrap_rate",
+      "synced_at",
+      "unit_code"
+    ]
+  },
+  "src_plm.plm_md_material": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "master_version",
+      "material_code",
+      "material_name",
+      "material_spec",
+      "synced_at"
+    ]
+  },
+  "src_plm.plm_md_product": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "lifecycle_status",
+      "master_version",
+      "product_code",
+      "product_model",
+      "product_name",
+      "synced_at"
+    ]
+  },
+  "src_plm.plm_md_routing": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "effective_date",
+      "master_version",
+      "product_code",
+      "routing_code",
+      "routing_name",
+      "routing_version",
+      "synced_at"
+    ]
+  },
+  "src_plm.plm_md_routing_operation": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "default_equipment_code",
+      "is_inspection_op",
+      "is_key_operation",
+      "master_version",
+      "op_seq",
+      "operation_code",
+      "operation_name",
+      "routing_code",
+      "routing_version",
+      "run_time_min",
+      "setup_time_min",
+      "synced_at",
+      "work_center"
+    ]
+  },
+  "src_plm.plm_product_family": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/PlmCatalogService.java"
+    ],
+    "columns": [
+      "created_at",
+      "family_code",
+      "family_name",
+      "id",
+      "market_segment",
+      "owner_user",
+      "status",
+      "updated_at"
+    ]
+  },
+  "src_plm.plm_product_version": {
+    "mode": "sql",
+    "plan": "02",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/plm/src/main/java/com/mfg/plm/service/PlmCatalogService.java"
+    ],
+    "columns": [
+      "baseline_no",
+      "created_at",
+      "created_by",
+      "effective_date",
+      "id",
+      "lifecycle_status",
+      "product_code",
+      "status",
+      "updated_at",
+      "version_name",
+      "version_no"
+    ]
+  },
+  "src_qms.qms_capa": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "capa_no",
+      "corrective_action",
+      "due_date",
+      "id",
+      "ncr_no",
+      "owner_user",
+      "preventive_action",
+      "root_cause",
+      "status",
+      "verified_at",
+      "verified_by"
+    ]
+  },
+  "src_qms.qms_eight_d": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "closed_at",
+      "containment_action",
+      "corrective_action",
+      "due_date",
+      "eight_d_no",
+      "id",
+      "ncr_no",
+      "preventive_action",
+      "problem_desc",
+      "root_cause",
+      "status",
+      "supplier_code",
+      "team_members"
+    ]
+  },
+  "src_qms.qms_md_material": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "inspection_standard",
+      "is_inspection_required",
+      "master_version",
+      "material_code",
+      "material_name",
+      "synced_at"
+    ]
+  },
+  "src_qms.qms_ncr": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java",
+      "source-apps/qms/src/main/java/com/mfg/qms/service/QmsLifecycleService.java"
+    ],
+    "columns": [
+      "created_at",
+      "defect_qty",
+      "disposition",
+      "id",
+      "inspection_no",
+      "material_code",
+      "ncr_no",
+      "responsible_dept",
+      "severity",
+      "source_no",
+      "status",
+      "supplier_code"
+    ]
+  },
+  "src_qms.qms_sampling_plan": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "accept_qty",
+      "id",
+      "lot_max",
+      "lot_min",
+      "plan_code",
+      "plan_name",
+      "reject_qty",
+      "sample_size",
+      "status"
+    ]
+  },
+  "src_qms.qms_standard": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "aql_level",
+      "created_by",
+      "id",
+      "inspection_type",
+      "material_code",
+      "standard_code",
+      "standard_name",
+      "status",
+      "version_no"
+    ]
+  },
+  "src_qms.qms_standard_item": {
+    "mode": "planned",
+    "plan": "03",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "id",
+      "item_code",
+      "item_name",
+      "lower_limit",
+      "required_flag",
+      "standard_id",
+      "unit_code",
+      "upper_limit"
+    ]
+  },
+  "src_srm.srm_asn": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java"
+    ],
+    "columns": [
+      "asn_no",
+      "batch_no",
+      "created_at",
+      "created_by",
+      "expected_arrival_date",
+      "id",
+      "material_code",
+      "purchase_order_no",
+      "ship_date",
+      "ship_qty",
+      "status",
+      "supplier_code"
+    ]
+  },
+  "src_srm.srm_md_material": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "conversion_rate",
+      "master_version",
+      "material_code",
+      "material_name",
+      "purchase_unit_code",
+      "standard_price",
+      "synced_at"
+    ]
+  },
+  "src_srm.srm_md_supplier": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "lead_time_days",
+      "master_version",
+      "qual_status",
+      "supplier_code",
+      "supplier_level",
+      "supplier_name",
+      "synced_at"
+    ]
+  },
+  "src_srm.srm_onboarding": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "application_no",
+      "category_code",
+      "contact_name",
+      "contact_phone",
+      "created_at",
+      "created_by",
+      "id",
+      "risk_level",
+      "status",
+      "supplier_name",
+      "workflow_instance_id"
+    ]
+  },
+  "src_srm.srm_qualification": {
+    "mode": "planned",
+    "plan": "05",
+    "reason": "已建表但未找到业务访问实现；保留为待实施缺口，不用登记掩盖未完成状态。",
+    "evidence": [
+      "docs/plans/README.md"
+    ],
+    "columns": [
+      "audit_result",
+      "certificate_no",
+      "expire_date",
+      "file_name",
+      "id",
+      "onboarding_id",
+      "qualification_type"
+    ]
+  },
+  "src_srm.srm_rfq": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java"
+    ],
+    "columns": [
+      "created_at",
+      "created_by",
+      "id",
+      "material_code",
+      "quantity",
+      "required_date",
+      "rfq_no",
+      "source_requisition_no",
+      "status",
+      "title",
+      "winner_supplier_code"
+    ]
+  },
+  "src_srm.srm_supplier_performance": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "delivery_rate",
+      "id",
+      "period_code",
+      "ppm",
+      "qualified_rate",
+      "rating",
+      "score",
+      "supplier_code"
+    ]
+  },
+  "src_srm.srm_supplier_quality": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java",
+      "source-apps/qms/src/main/java/com/mfg/qms/service/QmsLifecycleService.java"
+    ],
+    "columns": [
+      "closed_at",
+      "defect_qty",
+      "due_date",
+      "eight_d_status",
+      "id",
+      "issue_no",
+      "ppm",
+      "problem_desc",
+      "source_no",
+      "supplier_code"
+    ]
+  },
+  "src_srm.srm_supplier_quote": {
+    "mode": "sql",
+    "plan": "05",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java"
+    ],
+    "columns": [
+      "delivery_date",
+      "id",
+      "payment_terms",
+      "rfq_id",
+      "score",
+      "status",
+      "supplier_code",
+      "unit_price"
+    ]
+  },
+  "src_wms.wms_count_line": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/wms/src/main/java/com/mfg/wms/service/InventoryTransactionService.java"
+    ],
+    "columns": [
+      "actual_qty",
+      "batch_no",
+      "book_qty",
+      "count_id",
+      "difference_qty",
+      "id",
+      "location_code",
+      "material_code",
+      "review_status"
+    ]
+  },
+  "src_wms.wms_count_plan": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/wms/src/main/java/com/mfg/wms/controller/WmsP3Controller.java",
+      "source-apps/wms/src/main/java/com/mfg/wms/service/InventoryTransactionService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "count_no",
+      "created_by",
+      "id",
+      "idempotency_key",
+      "planned_date",
+      "posted_at",
+      "scope_type",
+      "status",
+      "warehouse_code"
+    ]
+  },
+  "src_wms.wms_inventory_action": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "action_no",
+      "action_type",
+      "batch_no",
+      "created_at",
+      "id",
+      "location_code",
+      "material_code",
+      "operator",
+      "quantity",
+      "reason",
+      "source_no",
+      "warehouse_code"
+    ]
+  },
+  "src_wms.wms_inventory_ledger": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/wms/src/main/java/com/mfg/wms/service/InventoryTransactionService.java"
+    ],
+    "columns": [
+      "action_type",
+      "available_delta",
+      "batch_no",
+      "created_at",
+      "frozen_delta",
+      "id",
+      "idempotency_key",
+      "location_code",
+      "material_code",
+      "on_hand_delta",
+      "operator_code",
+      "quality_status_after",
+      "quality_status_before",
+      "source_no",
+      "source_system",
+      "warehouse_code"
+    ]
+  },
+  "src_wms.wms_md_material": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/mdm/src/main/java/com/mfg/mdm/service/MasterDataDistributor.java"
+    ],
+    "columns": [
+      "base_unit_code",
+      "is_batch_managed",
+      "master_version",
+      "material_code",
+      "material_name",
+      "safety_stock",
+      "synced_at"
+    ]
+  },
+  "src_wms.wms_putaway": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "actual_location",
+      "batch_no",
+      "completed_at",
+      "id",
+      "material_code",
+      "putaway_no",
+      "quantity",
+      "receipt_no",
+      "status",
+      "suggested_location"
+    ]
+  },
+  "src_wms.wms_receipt": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3FlowService.java",
+      "source-apps/qms/src/main/java/com/mfg/qms/integration/ReceiptInspectionConsumer.java",
+      "source-apps/qms/src/main/java/com/mfg/qms/service/QmsLifecycleService.java"
+    ],
+    "columns": [
+      "asn_no",
+      "batch_no",
+      "created_at",
+      "id",
+      "inspection_no",
+      "material_code",
+      "purchase_order_no",
+      "receipt_no",
+      "received_qty",
+      "status",
+      "supplier_code",
+      "warehouse_code"
+    ]
+  },
+  "src_wms.wms_transfer": {
+    "mode": "sql",
+    "plan": "03",
+    "reason": "已有 JDBC 或只读副本访问路径，保留 SQL 管理；列集合受本登记与实时 schema 检查约束。",
+    "evidence": [
+      "source-apps/wms/src/main/java/com/mfg/wms/controller/WmsP3Controller.java",
+      "source-apps/wms/src/main/java/com/mfg/wms/service/InventoryTransactionService.java",
+      "source-apps/shared/common/src/main/java/com/mfg/common/service/P3CrudService.java"
+    ],
+    "columns": [
+      "batch_no",
+      "from_location",
+      "from_warehouse",
+      "id",
+      "idempotency_key",
+      "material_code",
+      "quantity",
+      "status",
+      "to_location",
+      "to_warehouse",
+      "transfer_no"
+    ]
+  }
+}

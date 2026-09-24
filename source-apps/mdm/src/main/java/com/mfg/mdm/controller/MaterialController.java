@@ -47,6 +47,7 @@ public class MaterialController {
 
     @Operation(summary = "物料分页查询")
     @GetMapping
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:VIEW')")
     public ApiResponse<Page<Material>> page(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
@@ -78,6 +79,7 @@ public class MaterialController {
     @Operation(summary = "可选物料列表（仅已发布）",
             description = "业务系统建单据时用。草稿/审批中的物料不会出现——这是主数据管控的核心体现")
     @GetMapping("/consumable")
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:VIEW')")
     public ApiResponse<List<Map<String, Object>>> consumable() {
         List<Map<String, Object>> list = repo.findConsumable().stream()
                 .map(m -> {
@@ -100,6 +102,7 @@ public class MaterialController {
 
     @Operation(summary = "物料详情")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:VIEW')")
     public ApiResponse<Material> detail(@PathVariable Long id) {
         return ApiResponse.ok(repo.findById(id)
                 .orElseThrow(() -> BizException.notFound("物料", id)));
@@ -108,6 +111,7 @@ public class MaterialController {
     /** 按编码查——业务系统引用主数据时的真实调用方式 */
     @Operation(summary = "按编码查询（业务系统引用时的校验入口）")
     @GetMapping("/by-code/{code}")
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:VIEW')")
     public ApiResponse<Material> byCode(@PathVariable String code) {
         Material m = repo.findByMaterialCode(code)
                 .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND,
@@ -190,6 +194,7 @@ public class MaterialController {
 
     @Operation(summary = "按状态统计", description = "首页概览用")
     @GetMapping("/stats")
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:VIEW')")
     public ApiResponse<Map<String, Object>> stats() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("draft", repo.countByStatus("DRAFT"));
@@ -199,5 +204,11 @@ public class MaterialController {
         m.put("total", repo.count());
         m.put("currentUser", CurrentUser.usernameOrSystem());
         return ApiResponse.ok(m);
+    }
+    private final com.mfg.mdm.service.MasterDataTerminalService terminalService;
+    @PostMapping("/{id}/disable")
+    @PreAuthorize("hasAuthority('MDM:MATERIAL:DISABLE')")
+    public ApiResponse<Material> disable(@PathVariable Long id) {
+        return ApiResponse.ok(terminalService.disable(Material.class, id));
     }
 }

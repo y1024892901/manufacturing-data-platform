@@ -10,6 +10,7 @@ import com.mfg.workflow.service.ApprovalEngine;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -43,6 +44,7 @@ public class DemoController {
     @Operation(summary = "模拟提交 BOM 变更申请",
             description = "发起一条 BOM 三级审批（工艺主管 → 生产主管 → 成本会计），用于验证审批链路")
     @PostMapping("/bom-change")
+    @PreAuthorize("hasAuthority('MDM:BOM:CHANGE')")
     public ApiResponse<Map<String, Object>> submitBomChange(
             @RequestParam(defaultValue = "BOM-MOTOR-001") String bomCode,
             @RequestParam(defaultValue = "M-2043") String materialCode,

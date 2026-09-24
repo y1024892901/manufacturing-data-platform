@@ -66,7 +66,36 @@ public class UserAdminService {
     @Transactional public void resetPassword(Long id, String password) { SysUser user = load(id); user.setPasswordHash(encoder.encode(password)); user.setPasswordChangedAt(LocalDateTime.now()); user.setFailedLoginCount(0); user.setLocked(false); users.save(user); }
     @Transactional public AdminUserView setRoles(Long id, Set<Long> roleIds) { SysUser user = load(id); user.setRoles(new HashSet<>(roles.findAllById(roleIds))); if (user.getRoles().size() != roleIds.size()) throw BizException.of(ErrorCode.PARAM_INVALID, "包含不存在的角色"); return AdminUserView.from(users.save(user)); }
     @Transactional public AdminUserView setSystems(Long id, Set<String> requested) { validateSystems(requested); SysUser user = load(id); user.setSystems(new HashSet<>(requested)); return AdminUserView.from(users.save(user)); }
-    @Transactional public AdminUserView setDataScope(Long id, String type, Set<String> values) { if (!Set.of("ROLE","ALL","DEPT","SELF","NONE").contains(type)) throw BizException.of(ErrorCode.PARAM_INVALID, "未知数据范围类型"); SysUser user=load(id); user.setDataScopeType(type); user.setDataScopeValue(values==null||values.isEmpty()?null:String.join(",",values)); return AdminUserView.from(users.save(user)); }
+    @Transactional
+    public AdminUserView setDataScope(Long id, String type, Set<String> values) {
+        if (type == null || !Set.of("ROLE","ALL","DEPT","SELF","NONE","CUSTOM").contains(type))
+            throw BizException.of(ErrorCode.PARAM_INVALID,"未知数据范围类型");
+        Set<String> normalized = new java.util.TreeSet<>();
+        if (values != null) for (String value : values) {
+            if (value == null || value.isBlank() || value.contains(","))
+                throw BizException.of(ErrorCode.PARAM_INVALID,"数据范围值不能为空或包含逗号");
+            normalized.add(value.trim());
+        }
+        if (!normalized.isEmpty() && !Set.of("DEPT","CUSTOM").contains(type))
+            throw BizException.of(ErrorCode.PARAM_INVALID,"只有部门或指定资源范围可以填写范围值");
+        if (type.equals("CUSTOM")) {
+            if (normalized.isEmpty()) throw BizException.of(ErrorCode.PARAM_INVALID,"指定资源范围至少填写一项");
+            for (String value: normalized) {
+                int colon=value.indexOf(':');
+                try {
+                    if (colon<1 || colon==value.length()-1) throw new IllegalArgumentException();
+                    com.mfg.security.scope.ScopedResource.valueOf(value.substring(0,colon));
+                } catch (IllegalArgumentException ex) {
+                    throw BizException.of(ErrorCode.PARAM_INVALID,"指定资源格式应为 CUSTOMER:C001 等资源类型:业务编码");
+                }
+            }
+        }
+        String joined=String.join(",",normalized);
+        if(joined.length()>500)throw BizException.of(ErrorCode.PARAM_INVALID,"数据范围值不能超过500字符");
+        SysUser user=load(id);user.setDataScopeType(type);user.setDataScopeValue(joined.isEmpty()?null:joined);
+        return AdminUserView.from(users.save(user));
+    }
+
 
     @Transactional(readOnly = true)
     public byte[] exportCsv() {

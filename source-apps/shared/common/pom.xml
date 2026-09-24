@@ -32,6 +32,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
+        <!-- 方法级鉴权注解 @PreAuthorize 的所在模块；版本由 Spring Boot BOM 管理。
+             只引 core 不引 starter：自动配置与方法安全开关仍由 shared-security 提供。 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
         <!-- MySQL 8 驱动：18 个库统一用 MySQL，版本由 Spring Boot BOM 管理 -->
         <dependency>
             <groupId>com.mysql</groupId>

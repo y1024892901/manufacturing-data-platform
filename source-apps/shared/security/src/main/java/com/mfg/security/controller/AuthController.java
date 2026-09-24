@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -47,12 +48,14 @@ public class AuthController {
 
     @Operation(summary = "当前登录用户", description = "返回当前身份的角色、权限与可访问系统")
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<LoginUser> me() {
         return ApiResponse.ok(CurrentUser.get());
     }
 
     @Operation(summary = "登出", description = "无状态 JWT，服务端仅记录日志，前端丢弃令牌即可")
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> logout() {
         // 无状态令牌无需服务端注销；此处保留接口以便前端统一调用
         return ApiResponse.ok();

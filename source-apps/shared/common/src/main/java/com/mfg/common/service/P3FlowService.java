@@ -19,6 +19,7 @@ import java.util.Map;
 public class P3FlowService {
     private final JdbcTemplate db;
     private final BusinessEventService events;
+    private final java.util.List<com.mfg.common.api.DataVisibility> visibility;
 
     @Transactional
     public Map<String, Object> awardRfq(long id, long quoteId) {
@@ -57,11 +58,6 @@ public class P3FlowService {
             """, receiptNo, asn.get("asn_no"), asn.get("purchase_order_no"), asn.get("supplier_code"),
                 asn.get("material_code"), asn.get("batch_no"), asn.get("ship_qty"), warehouseCode, inspectionNo);
         long receiptId = db.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        db.update("""
-            INSERT INTO src_qms.qms_inspection(inspection_no,inspection_type,material_code,batch_no,supplier_code,delivery_no,inspected_qty,inspect_result,inspect_date,source_type,source_no)
-            VALUES(?,'IQC',?,?,?,?,?,'PENDING',CURDATE(),'WMS_RECEIPT',?)
-            """, inspectionNo, asn.get("material_code"), asn.get("batch_no"), asn.get("supplier_code"),
-                asn.get("asn_no"), asn.get("ship_qty"), receiptNo);
         db.update("UPDATE src_srm.srm_asn SET status='ARRIVED' WHERE id=?", id);
         events.publish("WMS.RECEIPT.PENDING_INSPECTION", "wms", "qms", "RECEIPT", receiptId,
                 Map.of("receiptNo", receiptNo, "inspectionNo", inspectionNo));
@@ -70,7 +66,10 @@ public class P3FlowService {
 
     @Transactional
     public Map<String, Object> judgeInspection(long id, BigDecimal qualifiedQty, BigDecimal defectQty, String result) {
-        Map<String, Object> inspection = one("SELECT * FROM src_qms.qms_inspection WHERE id=? FOR UPDATE", id);
+        String sql="SELECT * FROM src_qms.qms_inspection WHERE id=?";
+        java.util.List<Object> args=new java.util.ArrayList<>();args.add(id);
+        for(var policy:visibility){var f=policy.filter("src_qms.qms_inspection","");sql+=" AND ("+f.sql()+")";args.addAll(f.parameters());}
+        Map<String, Object> inspection = one(sql+" FOR UPDATE", args.toArray());
         if (!"PENDING".equals(inspection.get("inspect_result")))
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "检验结论已生成");
         BigDecimal inspected = decimal(inspection.get("inspected_qty"));

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +55,7 @@ public class HealthController {
 
     @Operation(summary = "数据库概览", description = "列出全部 18 个库及其表数量，演示开场用")
     @GetMapping("/databases")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<Page<Map<String, Object>>> databases(@RequestParam(defaultValue = "1") int page,
                                                             @RequestParam(defaultValue = "20") int size) {
         int pageIndex = Math.max(0, page - 1);

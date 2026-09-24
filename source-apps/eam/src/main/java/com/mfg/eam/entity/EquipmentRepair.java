@@ -25,4 +25,5 @@ public class EquipmentRepair {
     @Column(name = "repairman_code") private String repairmanCode;
     @Column(name = "repair_result") private String repairResult;
     @Column(name = "remark") private String remark;
+    @Column(name = "created_at") private LocalDateTime createdAt;
 }

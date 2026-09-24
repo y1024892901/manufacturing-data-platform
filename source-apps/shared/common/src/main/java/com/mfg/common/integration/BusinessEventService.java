@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.Locale;
 
 /** 单进程演示环境中的业务 Outbox/Inbox，总线仍保留可观察、幂等和重试语义。 */
 @Slf4j
@@ -28,6 +29,8 @@ public class BusinessEventService {
     @Transactional
     public String publish(String eventType, String sourceSystem, String targetSystem,
                           String aggregateType, Object aggregateId, Map<String, ?> payload) {
+        sourceSystem = sourceSystem.trim().toLowerCase(Locale.ROOT);
+        targetSystem = targetSystem.trim().toLowerCase(Locale.ROOT);
         String eventId = UUID.randomUUID().toString();
         String traceId = UUID.randomUUID().toString();
         try {
