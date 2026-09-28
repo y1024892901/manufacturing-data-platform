@@ -1,11 +1,11 @@
 # eam/ — 目前进展
 
-> 截至 2026-09-22 · 对应整体计划见 [PLAN.md](PLAN.md)
+> 截至 2026-09-28 · 对应整体计划见 [PLAN.md](PLAN.md)
 
 ## 一句话结论
 
-EAM 已跑通「设备建档 → 故障上报 → 维修完工 → 设备恢复」这条最小闭环（12 个接口、5 张业务表），
-但**只用了 entity/repo/controller 三层**，服务层、审批、事件、报表四个方向均为空白，尚未达到最低验收标准。
+EAM 四类单据现在均支持分页查询、单据详情、新建、编辑和删除，并保留状态流转动作（共 24 个接口、5 张业务表）；设备状态、维修结果与关联单据采用事务保护，受引用的历史档案会拒绝删除。
+服务层、审批、跨系统事件、漏检排程与运营报表仍未补齐，尚未达到完整 EAM 最低验收标准。
 
 ## 已实现
 
@@ -40,28 +40,37 @@ EAM 已跑通「设备建档 → 故障上报 → 维修完工 → 设备恢复�
 
 ## 接口清单
 
-遍历 `@RestController` / `@RequestMapping` / `@GetMapping` / `@PostMapping`，共 **12 个接口**：
+遍历 EAM 控制器路由，共 **24 个接口**：
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/eam/equipments` | 设备分页查询（`page` 默认 1、`size` 默认 20、上限 200） |
+| GET | `/api/eam/equipments/{id}` | 设备详情查询（应用设备数据范围） |
 | POST | `/api/eam/equipments` | 设备建档（编码查重，初始状态 `IDLE`） |
+| PUT | `/api/eam/equipments/{id}` | 修改设备档案与可选采购、质保、保养字段（设备编码不可改） |
+| DELETE | `/api/eam/equipments/{id}` | 删除未被故障、维修、点检或状态履历引用的设备 |
 | POST | `/api/eam/equipments/{id}/status` | 切换设备状态（五态白名单） |
 | GET | `/api/eam/faults` | 故障分页查询 |
+| GET | `/api/eam/faults/{id}` | 故障单详情查询 |
 | POST | `/api/eam/faults` | 故障上报（联动设备转 `FAULT`） |
+| PUT | `/api/eam/faults/{id}` | 修改待处理故障描述及生产影响信息 |
+| DELETE | `/api/eam/faults/{id}` | 删除未关闭且没有维修记录的故障单 |
 | POST | `/api/eam/faults/{id}/close` | 关闭故障（联动设备转 `IDLE`） |
 | GET | `/api/eam/inspections` | 点检分页查询 |
+| GET | `/api/eam/inspections/{id}` | 点检单详情查询 |
 | POST | `/api/eam/inspections` | 创建点检单（初始 `result=null`、`missed=false`） |
+| PUT | `/api/eam/inspections/{id}` | 修改尚未执行的点检安排和 JSON 点检项目 |
+| DELETE | `/api/eam/inspections/{id}` | 删除尚未执行的点检计划 |
 | POST | `/api/eam/inspections/{id}/complete` | 完成点检（`result` 必填，`abnormalDesc` 可选） |
 | GET | `/api/eam/repairs` | 维修单分页查询 |
+| GET | `/api/eam/repairs/{id}` | 维修单详情查询 |
 | POST | `/api/eam/repairs` | 创建维修单（校验故障存在、设备一致、故障未关闭） |
+| PUT | `/api/eam/repairs/{id}` | 修改进行中或待备件维修单的内容、备件、成本与工时 |
+| DELETE | `/api/eam/repairs/{id}` | 删除未完工维修单并恢复设备故障状态 |
 | POST | `/api/eam/repairs/{id}/complete` | 维修完工（`result` 限 `REPAIRED`/`PENDING_PARTS`/`SCRAPPED`，自动算停机时长） |
 
-> 权限：`SecurityConfig` 对 `/api/eam/**` 统一要求 `hasAuthority("SYSTEM_EAM")`，
-> 该 authority 由 `sys_user_system` 表映射产生（`admin`、`xujing` 两个演示账号已授予 `eam`）。
-> 代码中**没有任何 `@PreAuthorize`**，因此种子里那 6 个 `EAM:*` 权限点（`EAM:EQUIPMENT:VIEW`、
-> `EAM:FAULT:CREATE`、`EAM:FAULT:APPROVE`、`EAM:REPAIR:FINISH`、`EAM:INSPECTION:CREATE`、
-> `EAM:INSPECTION:PLAN`）**只是数据，不被任何接口读取**——目前是系统级门禁，不是细粒度权限。
+> 权限：`SecurityConfig` 对 `/api/eam/**` 统一要求 `SYSTEM_EAM`，各接口再通过 `@PreAuthorize` 校验细粒度权限。
+> V61 为设备主管、维修人员和管理员补齐编辑/删除权限；设备档案删除只授予设备主管与管理员。
 
 ## 数据表
 
@@ -90,7 +99,7 @@ Flyway 的基线版本是 11，V1–V11 正是 `infra/db-init/` 下的脚本，�
 
 | 验收项 | 状态 | 证据 / 缺口 |
 |---|---|---|
-| ① 至少 5 个本职模块具有实体、服务、接口和角色权限 | **未达标** | 实体 4 个、接口 12 个；但**无 service 层**（业务写在 Controller），且 `EAM:*` 权限点未被代码引用。目录的 6 个模块中 4 个部分实现、2 个未实现 |
+| ① 至少 5 个本职模块具有实体、服务、接口和角色权限 | **未达标** | 4 类单据已有实体、24 个接口和细粒度角色权限；但**无 service 层**，且目录的 6 个模块中 4 个部分实现、2 个未实现 |
 | ② 至少 3 类核心单据可以从创建流转到关闭或作废 | **部分达标** | 故障单 `OPEN → CLOSED` 完整；维修单 `REPAIRING → REPAIRED/PENDING_PARTS/SCRAPPED` 完整；点检单 `result=null → NORMAL/ABNORMAL` 完整。**但设备本身只有状态切换、无建档→报废的作废语义（`SCRAPPED` 仅是状态字符串）**，且无任何作废接口 |
 | ③ 至少 1 个审批流程和 1 个异常处理闭环 | **半达标** | **异常闭环有**：故障上报 → 维修 → 完工 → 设备恢复，联动真实存在。**审批流程无**：全库 `wf_definition` 的 `biz_type` 无 EAM，未接入 `ApprovalEngine` |
 | ④ 至少 2 个向其他系统发送或消费的幂等业务事件 | **未达标** | EAM **不发事件**（无 `integration/` 层、不写 `mfg_ops.biz_outbox`）。作为接收方，MDM 物料分发用 `INSERT … ON DUPLICATE KEY UPDATE` 写了 `src_eam.eam_md_material`，这是幂等的，但属于**被动接收**且只有 1 条链路 |
@@ -100,13 +109,12 @@ Flyway 的基线版本是 11，V1–V11 正是 `infra/db-init/` 下的脚本，�
 
 按补齐优先级排列：
 
-1. **无 `service/` 层**（最结构性缺口）。查重、状态联动、停机时长计算都内联在 Controller 中，无 `@Transactional` 边界——
-   `EquipmentRepairController.complete` 里「改维修单 + 关故障单 + 改设备状态」三步写库不在同一事务内，中途失败会留下不一致数据。
+1. **无 `service/` 层**。查重、状态联动、停机时长计算仍内联在 Controller 中；本次已为跨单据写入增加 `@Transactional`，避免维修完工只更新部分记录，但业务逻辑仍需后续迁移到服务层。
 2. **无 `domain/` 层**。设备状态、故障状态、点检结果、维修结论四组状态字面量散落在 Controller 与实体默认值里，无枚举、无状态机、无合法迁移校验（例如可把 `SCRAPPED` 设备直接改回 `RUNNING`）。
 3. **无审批**。`EAM:FAULT:APPROVE` 权限点已种子化，但没有 `wf_definition`/`wf_node` 定义，重大故障无法走审批。
 4. **无事件**。故障停机不影响任何下游系统的交期计算，`prod_order_no` 字段只是被存下来、没人消费。
 5. **`eam_equipment_status_log` 空转**。实体与 repo 已补（计划 00 · F4-08），但状态切换仍不落台账，因此「设备可用率」「状态时段重叠检测（治理规则 E02）」都缺数据源——缺的是**写入点**，不是映射。
 6. **点检漏检不成立**。`is_missed` 恒为 `false`，无计划生成、无超期扫描（治理规则 E04 无输入）。
-7. **实体字段与表结构已对齐，但接口仍不读写**（计划 00 · F4-08 补齐映射）：`eam_equipment` 的 `purchase_date`/`purchase_price`/`warranty_end_date`/`maintenance_cycle_days`/`last_maintenance_date`、`eam_fault` 的 `fault_cause`、`eam_inspection` 的 `check_items`(JSON，按 `String` 映射) 现已映射进实体。**缺口从「映射缺失」转为「读写缺失」**：12 个接口没有一个接收或返回这些字段，资产信息、故障原因、点检项在接口层依旧不可见。
+7. **更多资产/维修属性仍待扩展**：设备采购日期、金额、质保期限、保养周期，故障原因、工序影响和点检 JSON 项目已接入表单与接口；维修成本、工时、更换备件也可录入与修改。附件、序列号、设备层级和备件库存等字段/能力仍未实现。
 8. **备件与可靠性整块缺失**：无备件领用/归还/最低库存，`repair_cost`/`replaced_parts` 只存不算；无 MTBF/MTTR，`health_score` 依赖数仓回写而数仓侧尚无产出。
-9. **查询能力薄弱**：`EquipmentRepairController.create` 用 `faults.findAll().stream().filter(...)` 全表扫描找故障单，数据量上来后是性能问题。
+9. **查询能力薄弱**：目前仍缺少按车间、设备、状态、时间的组合筛选和可靠性统计报表；维修建单已改用故障单号索引查询，避免全表扫描。

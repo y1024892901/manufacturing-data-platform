@@ -1,2 +1,129 @@
-<script setup lang="ts">import{computed,onMounted,reactive,ref,watch}from'vue';import{ElMessage}from'element-plus';import http from'../../api/http';import TablePager from'../../shared/components/TablePager.vue';const props=defineProps<{kind:'customers'|'suppliers'}>();const customer=computed(()=>props.kind==='customers'),title=computed(()=>customer.value?'客户与联系人':'供应商与联系人');const rows=ref<any[]>([]),contacts=ref<any[]>([]),loading=ref(false),dialog=ref(false),contactDrawer=ref(false),contactDialog=ref(false),id=ref<number|null>(null),partnerId=ref<number|null>(null),keyword=ref(''),status=ref(''),page=ref(1),size=ref(20),total=ref(0),form=reactive<any>({}),cf=reactive<any>({});async function load(){const{data}=await http.get(`/mdm/${props.kind}`,{params:{keyword:keyword.value||undefined,status:status.value||undefined,page:page.value,size:size.value}});rows.value=data.data.content;total.value=data.data.totalElements}function create(){id.value=null;Object.assign(form,customer.value?{customerCode:'',customerName:'',customerLevel:'A',customerType:'DIRECT',creditLimit:0,paymentTerms:'NET30'}:{supplierCode:'',supplierName:'',supplierLevel:'A',supplierType:'MATERIAL',leadTimeDays:7,qualStatus:'VALID'});dialog.value=true}function edit(r:any){id.value=r.id;Object.assign(form,r);dialog.value=true}async function save(){id.value?await http.put(`/mdm/${props.kind}/${id.value}`,form):await http.post(`/mdm/${props.kind}`,form);ElMessage.success('已保存草稿');dialog.value=false;await load()}async function submit(r:any){await http.post(`/mdm/${props.kind}/${r.id}/submit`);ElMessage.success('已提交审批');await load()}async function showContacts(r:any){partnerId.value=r.id;const{data}=await http.get(`/mdm/${props.kind}/${r.id}/contacts`);contacts.value=data.data;contactDrawer.value=true}function newContact(){Object.assign(cf,{contactName:'',positionName:'',mobile:'',email:'',primary:false});contactDialog.value=true}async function saveContact(){await http.post(`/mdm/${props.kind}/${partnerId.value}/contacts`,cf);contactDialog.value=false;await showContacts({id:partnerId.value})}watch(()=>props.kind,()=>{page.value=1;load()});onMounted(load)</script>
-<template><section class="page"><div class="head"><div><span>PARTNER MASTER</span><h1>{{title}}</h1><p>伙伴档案审批发布后才允许CRM、ERP和SRM引用。</p></div><el-button type="primary" @click="create">新增</el-button></div><el-card shadow="never"><div class="bar"><el-input v-model="keyword" placeholder="编码或名称"/><el-select v-model="status" clearable placeholder="状态"><el-option v-for="s in ['DRAFT','PENDING','PUBLISHED','REJECTED','DISABLED']" :key="s" :value="s"/></el-select><el-button @click="page=1;load()">查询</el-button></div><el-table :data="rows" stripe><el-table-column :prop="customer?'customerCode':'supplierCode'" label="编码"/><el-table-column :prop="customer?'customerName':'supplierName'" label="名称"/><el-table-column :prop="customer?'customerLevel':'supplierLevel'" label="等级"/><el-table-column prop="status" label="状态"><template #default="{row}">{{$zh(row.status)}}</template></el-table-column><el-table-column prop="versionNo" label="版本"/><el-table-column label="操作" width="220"><template #default="{row}"><el-button link @click="edit(row)">编辑</el-button><el-button link @click="showContacts(row)">联系人</el-button><el-button link type="success" @click="submit(row)">提交</el-button></template></el-table-column></el-table><TablePager v-model:page="page" v-model:size="size" :total="total" @change="load"/></el-card><el-dialog v-model="dialog" :title="title" width="720px"><el-form label-position="top"><el-form-item label="编码"><el-input v-model="form[customer?'customerCode':'supplierCode']" :disabled="Boolean(id)"/></el-form-item><el-form-item label="名称"><el-input v-model="form[customer?'customerName':'supplierName']"/></el-form-item><el-form-item label="等级"><el-input v-model="form[customer?'customerLevel':'supplierLevel']"/></el-form-item><el-form-item v-if="customer" label="信用额度"><el-input-number v-model="form.creditLimit"/></el-form-item><el-form-item v-else label="交货提前期"><el-input-number v-model="form.leadTimeDays"/></el-form-item><el-form-item label="变更原因"><el-input v-model="form.changeReason"/></el-form-item></el-form><template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" @click="save">保存</el-button></template></el-dialog><el-drawer v-model="contactDrawer" title="联系人" size="620px"><el-button type="primary" @click="newContact">新增联系人</el-button><el-table :data="contacts"><el-table-column prop="contact_name" label="姓名"/><el-table-column prop="position_name" label="职位"/><el-table-column prop="mobile" label="手机"/><el-table-column prop="email" label="邮箱"/></el-table></el-drawer><el-dialog v-model="contactDialog" title="联系人" width="520px"><el-form label-position="top"><el-form-item label="姓名"><el-input v-model="cf.contactName"/></el-form-item><el-form-item label="职位"><el-input v-model="cf.positionName"/></el-form-item><el-form-item label="手机"><el-input v-model="cf.mobile"/></el-form-item><el-form-item label="邮箱"><el-input v-model="cf.email"/></el-form-item><el-checkbox v-model="cf.primary">主联系人</el-checkbox></el-form><template #footer><el-button type="primary" @click="saveContact">保存</el-button></template></el-dialog></section></template><style scoped>.page{max-width:1480px;margin:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:17px}.head h1{margin:6px 0;color:#243d5d}.head span{color:#3775d6;font-size:10px}.head p{color:#8291a4;font-size:12px}.bar{display:flex;gap:8px;margin-bottom:14px}.bar .el-input{width:280px}</style>
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import http from '../../api/http'
+import TablePager from '../../shared/components/TablePager.vue'
+import { zh, zhKey } from '../../shared/display'
+
+const props = defineProps<{ kind: 'customers' | 'suppliers' }>()
+const isCustomer = computed(() => props.kind === 'customers')
+const title = computed(() => isCustomer.value ? '客户主数据' : '供应商主数据')
+const rows = ref<any[]>([])
+const contacts = ref<any[]>([])
+const loading = ref(false)
+const contactsLoading = ref(false)
+const contactsVisible = ref(false)
+const selected = ref<any>(null)
+const detailVisible = ref(false)
+const keyword = ref('')
+const status = ref('')
+const page = ref(1)
+const size = ref(20)
+const total = ref(0)
+
+function mdmStatus(value: unknown) {
+  return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
+}
+
+function display(value: unknown, key: string) {
+  return key === 'status' ? mdmStatus(value) : zh(value)
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get(`/mdm/${props.kind}`, {
+      params: { keyword: keyword.value || undefined, status: status.value || undefined, page: page.value, size: size.value }
+    })
+    rows.value = data.data?.content || []
+    total.value = data.data?.totalElements || 0
+    if (!rows.value.length && total.value && page.value > 1) {
+      page.value -= 1
+      await load()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function showDetails(row: any) {
+  selected.value = row
+  detailVisible.value = true
+}
+
+async function showContacts(row: any) {
+  selected.value = row
+  contactsVisible.value = true
+  contactsLoading.value = true
+  try {
+    const { data } = await http.get(`/mdm/${props.kind}/${row.id}/contacts`)
+    contacts.value = data.data || []
+  } finally {
+    contactsLoading.value = false
+  }
+}
+
+function search() {
+  page.value = 1
+  load()
+}
+
+watch(() => props.kind, () => { page.value = 1; status.value = ''; keyword.value = ''; load() })
+onMounted(load)
+</script>
+
+<template>
+  <section class="partner-page">
+    <header class="page-head">
+      <div><span>权威主数据 · 只读查询</span><h1>{{ title }}</h1><p>查看伙伴档案、资质、信用与联系人信息。</p></div>
+      <el-tag type="info" effect="light" round>只读模式</el-tag>
+    </header>
+    <el-card shadow="never">
+      <div class="toolbar">
+        <div class="toolbar-note">共 {{ total }} 条档案</div>
+        <el-input v-model="keyword" clearable placeholder="输入编码或名称" @keyup.enter="search" />
+        <el-select v-model="status" clearable placeholder="全部状态" @change="search">
+          <el-option v-for="item in ['DRAFT','PENDING','PUBLISHED','REJECTED','DISABLED']" :key="item" :label="mdmStatus(item)" :value="item" />
+        </el-select>
+        <el-button :loading="loading" @click="search">查询</el-button>
+      </div>
+      <el-table :data="rows" v-loading="loading" stripe empty-text="暂无伙伴档案">
+        <el-table-column :prop="isCustomer?'customerCode':'supplierCode'" label="档案编码" min-width="140" />
+        <el-table-column :prop="isCustomer?'customerName':'supplierName'" label="名称" min-width="180" />
+        <el-table-column :prop="isCustomer?'shortName':'shortName'" label="简称" min-width="130" />
+        <el-table-column :prop="isCustomer?'customerLevel':'supplierLevel'" label="等级" width="90"><template #default="{row}">{{ zh(row[isCustomer?'customerLevel':'supplierLevel']) }}</template></el-table-column>
+        <el-table-column :prop="isCustomer?'customerType':'supplierType'" :label="isCustomer?'客户类型':'供应商类型'" min-width="120"><template #default="{row}">{{ zh(row[isCustomer?'customerType':'supplierType']) }}</template></el-table-column>
+        <el-table-column v-if="isCustomer" prop="region" label="所属地区" min-width="120" />
+        <el-table-column v-else prop="qualStatus" label="资质状态" min-width="110"><template #default="{row}">{{ zh(row.qualStatus) }}</template></el-table-column>
+        <el-table-column v-if="isCustomer" prop="creditLimit" label="信用额度" min-width="115" />
+        <el-table-column v-else prop="leadTimeDays" label="交货提前期（天）" min-width="130" />
+        <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{ mdmStatus(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column prop="versionNo" label="版本" width="80" />
+        <el-table-column label="操作" width="180" fixed="right"><template #default="{row}">
+          <el-button link type="primary" @click="showDetails(row)">档案详情</el-button>
+          <el-button link @click="showContacts(row)">联系人</el-button>
+        </template></el-table-column>
+      </el-table>
+      <TablePager v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load" />
+    </el-card>
+
+    <el-drawer v-model="detailVisible" :title="`${title}详情`" size="620px">
+      <el-descriptions v-if="selected" :column="2" border>
+        <el-descriptions-item v-for="key in Object.keys(selected)" :key="key" :label="zhKey(key)">{{ display(selected[key], key) }}</el-descriptions-item>
+      </el-descriptions>
+    </el-drawer>
+    <el-drawer v-model="contactsVisible" title="联系人档案" size="650px">
+      <div class="contact-title">{{ selected?.[isCustomer?'customerName':'supplierName'] || '' }}</div>
+      <el-table :data="contacts" v-loading="contactsLoading" stripe empty-text="暂无联系人">
+        <el-table-column prop="contact_name" label="姓名" min-width="115" />
+        <el-table-column prop="position_name" label="职务" min-width="110" />
+        <el-table-column prop="mobile" label="手机" min-width="130" />
+        <el-table-column prop="email" label="邮箱" min-width="180" />
+        <el-table-column prop="is_primary" label="主要联系人" width="115"><template #default="{row}">{{ zh(row.is_primary) }}</template></el-table-column>
+      </el-table>
+    </el-drawer>
+  </section>
+</template>
+
+<style scoped>
+.partner-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.page-head span{color:#3472d2;font-size:11px;font-weight:750;letter-spacing:1px}.page-head h1{margin:7px 0;color:#203b5b;font-size:27px}.page-head p{margin:0;color:#8291a4;font-size:13px}.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:15px}.toolbar-note{margin-right:auto;color:#8392a6;font-size:12px}.toolbar .el-input{width:270px}.toolbar .el-select{width:165px}.contact-title{margin-bottom:15px;color:#526982;font-weight:650}
+</style>

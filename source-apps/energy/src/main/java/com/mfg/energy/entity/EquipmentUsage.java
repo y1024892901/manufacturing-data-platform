@@ -2,4 +2,10 @@ package com.mfg.energy.entity;import jakarta.persistence.*;import lombok.*;impor
 @Entity @Table(name="energy_equipment_usage",catalog="src_energy") @Getter @Setter @NoArgsConstructor public class EquipmentUsage{@Id @GeneratedValue(strategy=GenerationType.IDENTITY)private Long id;@Column(name="equipment_code")private String equipmentCode;@Column(name="stat_date")private LocalDate statDate;@Column(name="stat_hour")private Integer statHour;@Column(name="energy_type")private String energyType="ELECTRIC";@Column(name="energy_value")private BigDecimal energyValue;@Column(name="unit_code")private String unitCode="KWH";@Column(name="run_hours")private BigDecimal runHours;@Column(name="output_qty")private BigDecimal outputQty;@Column(name="unit_consumption")private BigDecimal unitConsumption;
 @Column(name="baseline_value")private BigDecimal baselineValue;@Column(name="deviation_rate")private BigDecimal deviationRate;
 @Column(name="is_abnormal")private Boolean abnormal=false;
-@Column(name="created_at")private LocalDateTime createdAt;}
+@Column(name="meter_code")private String meterCode;
+@Column(name="shift_code")private String shiftCode;
+@Column(name="production_order_no")private String productionOrderNo;
+@Column(name="warning_threshold_percent")private BigDecimal warningThresholdPercent;
+@Column(name="remark")private String remark;
+@Column(name="created_at")private LocalDateTime createdAt;
+@Column(name="updated_at")private LocalDateTime updatedAt;}

@@ -15,6 +15,80 @@ public class InventoryTransactionService {
   db.update("INSERT INTO src_wms.wms_inventory_ledger(idempotency_key,action_type,source_system,source_no,material_code,warehouse_code,location_code,batch_no,quality_status_before,quality_status_after,on_hand_delta,available_delta,frozen_delta,operator_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",c.idempotencyKey(),type,blank(c.sourceSystem(),"WMS"),c.sourceNo(),c.materialCode(),c.warehouseCode(),c.locationCode(),c.batchNo(),before,after,onDelta,availableDelta,frozenDelta,CurrentUser.usernameOrSystem());
   return ledger(c.idempotencyKey());
  }
+ @Transactional public Map<String,Object> completePutaway(long id){
+  Map<String,Object> p=one("SELECT * FROM src_wms.wms_putaway WHERE id=? FOR UPDATE",id);
+  if("COMPLETED".equals(p.get("status")))return p;
+  if(!"PROCESSING".equals(p.get("status")))throw state("只有上架中的单据可以完成上架");
+  String destination=(String)p.get("actual_location");
+  if(destination==null||destination.isBlank())throw state("请先填写实际库位");
+  Map<String,Object> receipt=one("SELECT * FROM src_wms.wms_receipt WHERE receipt_no=? FOR UPDATE",p.get("receipt_no"));
+  if(!"AVAILABLE".equals(receipt.get("status")))throw state("收货批次尚未通过质量检验，不能上架");
+  String warehouse=String.valueOf(receipt.get("warehouse_code"));
+  Integer locationCount=db.queryForObject("SELECT COUNT(*) FROM src_wms.wms_location WHERE location_code=? AND warehouse_code=? AND is_available=1",Integer.class,destination,warehouse);
+  if(locationCount==null||locationCount==0)throw state("实际库位不存在、已停用或不属于收货仓库");
+  BigDecimal quantity=d(p,"quantity");
+  String material=String.valueOf(p.get("material_code")),batch=(String)p.get("batch_no");
+  db.update("INSERT INTO src_wms.wms_inventory(material_code,warehouse_code,location_code,batch_no,on_hand_qty,available_qty,unit_code,quality_status,received_date) VALUES(?,?,?, ?,0,0,'PCS','AVAILABLE',CURDATE()) ON DUPLICATE KEY UPDATE material_code=VALUES(material_code)",material,warehouse,destination,batch);
+  String no=String.valueOf(p.get("putaway_no"));
+  InventoryActionCommand out=new InventoryActionCommand(no+":OUT",material,warehouse,null,batch,quantity,"WMS",no,"上架移出待上架库存");
+  InventoryActionCommand in=new InventoryActionCommand(no+":IN",material,warehouse,destination,batch,quantity,"WMS",no,"上架至目标库位");
+  action("ISSUE",out);
+  action("PUTAWAY",in);
+  db.update("UPDATE src_wms.wms_putaway SET status='COMPLETED',completed_at=NOW(3) WHERE id=?",id);
+  return one("SELECT * FROM src_wms.wms_putaway WHERE id=?",id);
+ }
+
+ public List<Map<String,Object>> countLines(long id){
+  one("SELECT id FROM src_wms.wms_count_plan WHERE id=?",id);
+  return db.queryForList("SELECT * FROM src_wms.wms_count_line WHERE count_id=? ORDER BY id",id);
+ }
+
+ @Transactional public Map<String,Object> addCountLine(long id,Map<String,Object> input){
+  Map<String,Object> plan=countPlanForLineEdit(id,true);
+  String material=required(input,"materialCode","物料编码"),location=optional(input.get("locationCode")),batch=optional(input.get("batchNo"));
+  Integer duplicate=db.queryForObject("SELECT COUNT(*) FROM src_wms.wms_count_line WHERE count_id=? AND material_code=? AND COALESCE(location_code,'')=COALESCE(?,'') AND COALESCE(batch_no,'')=COALESCE(?,'')",Integer.class,id,material,location,batch);
+  if(duplicate!=null&&duplicate>0)throw state("同一库存维度已在盘点明细中");
+  BigDecimal book=db.queryForObject("SELECT COALESCE(SUM(on_hand_qty),0) FROM src_wms.wms_inventory WHERE material_code=? AND warehouse_code=? AND COALESCE(location_code,'')=COALESCE(?,'') AND COALESCE(batch_no,'')=COALESCE(?,'')",BigDecimal.class,material,plan.get("warehouse_code"),location,batch);
+  db.update("INSERT INTO src_wms.wms_count_line(count_id,material_code,location_code,batch_no,book_qty,actual_qty,difference_qty,review_status) VALUES(?,?,?,?,?,NULL,NULL,'PENDING')",id,material,location,batch,book==null?BigDecimal.ZERO:book);
+  Long lineId=Objects.requireNonNull(db.queryForObject("SELECT LAST_INSERT_ID()",Long.class));
+  return one("SELECT * FROM src_wms.wms_count_line WHERE id=?",lineId);
+ }
+
+ @Transactional public Map<String,Object> updateCountLine(long id,long lineId,BigDecimal actual){
+  Map<String,Object> plan=countPlanForLineEdit(id,false);
+  if(!"COUNTING".equals(plan.get("status")))throw state("只有盘点中的单据可以录入实盘数量");
+  if(actual==null||actual.signum()<0||actual.stripTrailingZeros().scale()>4)throw state("实盘数量不能为负数且最多四位小数");
+  Map<String,Object> line=one("SELECT * FROM src_wms.wms_count_line WHERE id=? AND count_id=? FOR UPDATE",lineId,id);
+  BigDecimal difference=actual.subtract(d(line,"book_qty"));
+  db.update("UPDATE src_wms.wms_count_line SET actual_qty=?,difference_qty=?,review_status='PENDING' WHERE id=?",actual,difference,lineId);
+  return one("SELECT * FROM src_wms.wms_count_line WHERE id=?",lineId);
+ }
+
+ @Transactional public Map<String,Object> approveCountLine(long id,long lineId){
+  Map<String,Object> plan=countPlanForLineEdit(id,false);
+  if(!"REVIEWING".equals(plan.get("status")))throw state("请先将盘点单提交复核");
+  Map<String,Object> line=one("SELECT * FROM src_wms.wms_count_line WHERE id=? AND count_id=? FOR UPDATE",lineId,id);
+  if(line.get("actual_qty")==null)throw state("请先录入实盘数量");
+  BigDecimal difference=d(line,"actual_qty").subtract(d(line,"book_qty"));
+  db.update("UPDATE src_wms.wms_count_line SET difference_qty=?,review_status='APPROVED' WHERE id=?",difference,lineId);
+  return one("SELECT * FROM src_wms.wms_count_line WHERE id=?",lineId);
+ }
+
+ @Transactional public void deleteCountLine(long id,long lineId){
+  countPlanForLineEdit(id,true);
+  if(db.update("DELETE FROM src_wms.wms_count_line WHERE id=? AND count_id=?",lineId,id)==0)throw BizException.notFound("盘点明细",lineId);
+ }
+
+ private Map<String,Object> countPlanForLineEdit(long id,boolean allowReleased){
+  Map<String,Object> plan=one("SELECT * FROM src_wms.wms_count_plan WHERE id=? FOR UPDATE",id);
+  String status=String.valueOf(plan.get("status"));
+  boolean allowed=allowReleased?Set.of("DRAFT","RELEASED","COUNTING").contains(status):Set.of("COUNTING","REVIEWING").contains(status);
+  if(!allowed)throw state("当前盘点单状态不允许维护盘点明细");
+  return plan;
+ }
+
+ private String required(Map<String,Object> x,String key,String label){Object value=x.get(key);if(value==null||String.valueOf(value).isBlank())throw state(label+"不能为空");return String.valueOf(value).trim();}
+ private String optional(Object value){return value==null||String.valueOf(value).isBlank()?null:String.valueOf(value).trim();}
  private void validate(InventoryActionCommand c){
   if(c==null||c.idempotencyKey()==null||c.idempotencyKey().isBlank()||c.idempotencyKey().length()>80)throw state("必须提供不超过80字符的业务幂等号");
   if(c.materialCode()==null||c.materialCode().isBlank()||c.warehouseCode()==null||c.warehouseCode().isBlank())throw state("物料和仓库不能为空");

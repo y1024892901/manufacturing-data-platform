@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 审批引擎 —— 本项目自研的轻量工作流内核。
@@ -66,6 +67,10 @@ public class ApprovalEngine {
     private final ObjectProvider<ApprovalCallback> callbackProvider;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    static final Set<String> READ_ONLY_MDM_BIZ_TYPES = Set.of(
+            "CUSTOMER", "SUPPLIER", "MATERIAL", "PRODUCT", "BOM", "ROUTING",
+            "MATERIAL_CATEGORY", "UNIT", "ORG_UNIT", "COST_CENTER", "ACCOUNT_SUBJECT",
+            "EMPLOYEE", "WAREHOUSE", "WORK_CENTER", "PRODUCTION_VERSION");
 
     // ============================================================
     // 一、发起流程
@@ -79,6 +84,7 @@ public class ApprovalEngine {
      */
     @Transactional
     public WfInstance start(StartApprovalRequest req) {
+        rejectReadOnlyMdmApproval(req.bizType());
         LoginUser me = CurrentUser.get();
 
         WfDefinition def = definitionRepo.findByBizTypeAndEnabledTrue(req.bizType())
@@ -151,6 +157,7 @@ public class ApprovalEngine {
 
         WfInstance instance = instanceRepo.findById(task.getInstanceId())
                 .orElseThrow(() -> BizException.notFound("审批实例", task.getInstanceId()));
+        rejectReadOnlyMdmApproval(instance.getBizType());
 
         if (!instance.isRunning()) {
             throw BizException.of(ErrorCode.WORKFLOW_ALREADY_FINISHED,
@@ -228,6 +235,7 @@ public class ApprovalEngine {
 
         WfInstance instance = instanceRepo.findById(task.getInstanceId())
                 .orElseThrow(() -> BizException.notFound("审批实例", task.getInstanceId()));
+        rejectReadOnlyMdmApproval(instance.getBizType());
 
         WfDefinition def = definitionRepo.findById(instance.getDefinitionId()).orElseThrow();
         WfNode currentNode = def.nodeAt(task.getNodeSeq());
@@ -284,6 +292,7 @@ public class ApprovalEngine {
 
         WfInstance instance = instanceRepo.findById(instanceId)
                 .orElseThrow(() -> BizException.notFound("审批实例", instanceId));
+        rejectReadOnlyMdmApproval(instance.getBizType());
 
         if (!instance.isRunning()) {
             throw BizException.of(ErrorCode.WORKFLOW_ALREADY_FINISHED,
@@ -327,7 +336,8 @@ public class ApprovalEngine {
         if (me.getRoleCodes().isEmpty()) {
             return List.of();
         }
-        return taskRepo.findMyPending(me.getRoleCodes(), me.getUsername());
+        return taskRepo.findMyPendingExcludingBizTypes(
+                me.getRoleCodes(), me.getUsername(), READ_ONLY_MDM_BIZ_TYPES);
     }
 
     /** 我的待办数量（首页角标） */
@@ -337,12 +347,20 @@ public class ApprovalEngine {
         if (me.getRoleCodes().isEmpty()) {
             return 0L;
         }
-        return taskRepo.countMyPending(me.getRoleCodes(), me.getUsername());
+        return taskRepo.countMyPendingExcludingBizTypes(
+                me.getRoleCodes(), me.getUsername(), READ_ONLY_MDM_BIZ_TYPES);
     }
 
-    @Transactional public WfTask transfer(Long taskId,String username,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("转交用户",username));source.complete("TRANSFERRED",reason,me.getUsername());taskRepo.save(source);WfTask target=new WfTask();target.setInstanceId(source.getInstanceId());target.setNodeSeq(source.getNodeSeq());target.setNodeName(source.getNodeName()+"（转交）");target.setApproverRole(source.getApproverRole());target.setAssignedUser(username);target.setSourceTaskId(source.getId());taskRepo.save(target);WfInstance instance=getInstance(source.getInstanceId());logAction(instance.getId(),target.getId(),target.getNodeSeq(),"TRANSFER",me,"转交给"+username+"："+reason,"PENDING","PENDING");return target;}
-    @Transactional public WfTask addSign(Long taskId,String username,String mode,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("加签用户",username));source.setTaskStatus("WAITING");taskRepo.save(source);WfTask sign=new WfTask();sign.setInstanceId(source.getInstanceId());sign.setNodeSeq(source.getNodeSeq());sign.setNodeName(source.getNodeName()+"（加签）");sign.setApproverRole(source.getApproverRole());sign.setAssignedUser(username);sign.setSourceTaskId(source.getId());sign.setSignMode("AFTER".equalsIgnoreCase(mode)?"AFTER":"BEFORE");taskRepo.save(sign);logAction(source.getInstanceId(),sign.getId(),sign.getNodeSeq(),"ADD_SIGN",me,"加签给"+username+"："+reason,"PENDING","WAITING");return sign;}
-    @Transactional public void copyTo(Long instanceId,List<String> users,String reason){LoginUser me=CurrentUser.get();getInstance(instanceId);for(String username:users){userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("抄送用户",username));if(ccRepo.findByInstanceIdAndUsername(instanceId,username).isEmpty()){WfCc cc=new WfCc();cc.setInstanceId(instanceId);cc.setUsername(username);cc.setCreatedBy(me.getUsername());ccRepo.save(cc);}}logAction(instanceId,null,null,"CC",me,reason,"RUNNING","RUNNING");}
+    @Transactional public WfTask transfer(Long taskId,String username,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);WfInstance instance=getInstance(source.getInstanceId());rejectReadOnlyMdmApproval(instance.getBizType());userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("转交用户",username));source.complete("TRANSFERRED",reason,me.getUsername());taskRepo.save(source);WfTask target=new WfTask();target.setInstanceId(source.getInstanceId());target.setNodeSeq(source.getNodeSeq());target.setNodeName(source.getNodeName()+"（转交）");target.setApproverRole(source.getApproverRole());target.setAssignedUser(username);target.setSourceTaskId(source.getId());taskRepo.save(target);logAction(instance.getId(),target.getId(),target.getNodeSeq(),"TRANSFER",me,"转交给"+username+"："+reason,"PENDING","PENDING");return target;}
+    @Transactional public WfTask addSign(Long taskId,String username,String mode,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);rejectReadOnlyMdmApproval(getInstance(source.getInstanceId()).getBizType());userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("加签用户",username));source.setTaskStatus("WAITING");taskRepo.save(source);WfTask sign=new WfTask();sign.setInstanceId(source.getInstanceId());sign.setNodeSeq(source.getNodeSeq());sign.setNodeName(source.getNodeName()+"（加签）");sign.setApproverRole(source.getApproverRole());sign.setAssignedUser(username);sign.setSourceTaskId(source.getId());sign.setSignMode("AFTER".equalsIgnoreCase(mode)?"AFTER":"BEFORE");taskRepo.save(sign);logAction(source.getInstanceId(),sign.getId(),sign.getNodeSeq(),"ADD_SIGN",me,"加签给"+username+"："+reason,"PENDING","WAITING");return sign;}
+    @Transactional public void copyTo(Long instanceId,List<String> users,String reason){LoginUser me=CurrentUser.get();WfInstance instance=getInstance(instanceId);rejectReadOnlyMdmApproval(instance.getBizType());for(String username:users){userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("抄送用户",username));if(ccRepo.findByInstanceIdAndUsername(instanceId,username).isEmpty()){WfCc cc=new WfCc();cc.setInstanceId(instanceId);cc.setUsername(username);cc.setCreatedBy(me.getUsername());ccRepo.save(cc);}}logAction(instanceId,null,null,"CC",me,reason,"RUNNING","RUNNING");}
+
+    private void rejectReadOnlyMdmApproval(String bizType) {
+        if (bizType != null && READ_ONLY_MDM_BIZ_TYPES.contains(bizType.toUpperCase())) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,
+                    "MDM 当前为只读模式，无需审批且不允许修改数据");
+        }
+    }
 
     /** 审批时间轴 */
     @Transactional(readOnly = true)

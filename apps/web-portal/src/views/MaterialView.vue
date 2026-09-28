@@ -1,2 +1,77 @@
-<script setup lang="ts">import{onMounted,ref}from'vue';import http from'../api/http';import TablePager from'../shared/components/TablePager.vue';const rows=ref<any[]>([]),total=ref(0),page=ref(1),size=ref(20),dialog=ref(false),form=ref<any>({materialCode:'',materialName:'',materialType:'RAW',baseUnitCode:'EA'});async function load(){const{data}=await http.get('/mdm/materials',{params:{page:page.value,size:size.value}});rows.value=data.data.content;total.value=data.data.totalElements}async function create(){await http.post('/mdm/materials',form.value);dialog.value=false;form.value={materialCode:'',materialName:'',materialType:'RAW',baseUnitCode:'EA'};load()}async function submit(r:any){await http.post(`/mdm/materials/${r.id}/submit`);load()}onMounted(load)</script>
-<template><section><div class="toolbar"><div><h1 class="page-title">物料主数据</h1><p class="page-subtitle">统一管理物料编码、分类、版本和发布状态；发布后自动分发到下游业务系统</p></div><el-button type="primary" @click="dialog=true">新建物料</el-button></div><el-card><div class="governance"><span class="status-dot"></span>治理规则：草稿物料不可被 ERP、MES、WMS 等系统引用，必须完成审批发布。</div><el-table :data="rows" stripe><el-table-column prop="materialCode" label="物料编码"/><el-table-column prop="materialName" label="物料名称" min-width="180"/><el-table-column prop="materialType" label="类别"/><el-table-column prop="status" label="状态"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':row.status==='PENDING'?'warning':'info'">{{$zh(row.status)}}</el-tag></template></el-table-column><el-table-column prop="versionNo" label="版本"/><el-table-column label="操作" width="130"><template #default="{row}"><el-button v-if="row.status==='DRAFT'||row.status==='REJECTED'" type="primary" link @click="submit(row)">提交审批</el-button></template></el-table-column></el-table><div class="table-footer">共 {{total}} 条记录</div><TablePager v-if="rows.length" v-model:page="page" v-model:size="size" :total="total" @change="load"/></el-card><el-dialog v-model="dialog" title="新建物料" width="520px"><el-form label-width="88px"><el-form-item label="物料编码"><el-input v-model="form.materialCode"/></el-form-item><el-form-item label="物料名称"><el-input v-model="form.materialName"/></el-form-item><el-form-item label="类别"><el-select v-model="form.materialType"><el-option label="原材料" value="RAW"/><el-option label="半成品" value="SEMI"/><el-option label="成品" value="FINISHED"/></el-select></el-form-item><el-form-item label="基本单位"><el-input v-model="form.baseUnitCode"/></el-form-item></el-form><template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" @click="create">保存草稿</el-button></template></el-dialog></section></template><style scoped>.governance{margin-bottom:15px;padding:10px 12px;border-radius:8px;background:#f5f9ff;color:#6680a0;font-size:12px}.table-footer{padding-top:14px;color:#91a0b4;font-size:12px}</style>
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import http from '../api/http'
+import TablePager from '../shared/components/TablePager.vue'
+import { zh } from '../shared/display'
+
+const rows = ref<any[]>([])
+const loading = ref(false)
+const total = ref(0)
+const page = ref(1)
+const size = ref(20)
+const status = ref('')
+
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get('/mdm/materials', {
+      params: { page: page.value, size: size.value, status: status.value || undefined }
+    })
+    rows.value = data.data?.content || []
+    total.value = data.data?.totalElements || 0
+  } finally {
+    loading.value = false
+  }
+}
+
+function filter() {
+  page.value = 1
+  load()
+}
+
+function mdmStatus(value: unknown) {
+  return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
+}
+
+onMounted(load)
+</script>
+
+<template>
+  <section class="material-page">
+    <header class="page-head">
+      <div>
+        <span>权威主数据 · 只读查询</span>
+        <h1>物料主数据</h1>
+        <p>查看物料编码、规格、计量与质量属性，以及当前版本状态。</p>
+      </div>
+      <el-tag type="info" effect="light" round>只读模式</el-tag>
+    </header>
+    <el-card shadow="never">
+      <div class="toolbar">
+        <div class="toolbar-note">共 {{ total }} 条物料记录</div>
+        <el-select v-model="status" clearable placeholder="全部状态" @change="filter">
+          <el-option v-for="item in ['DRAFT','PENDING','PUBLISHED','REJECTED','DISABLED']" :key="item" :label="mdmStatus(item)" :value="item" />
+        </el-select>
+        <el-button :loading="loading" @click="load">刷新</el-button>
+      </div>
+      <el-table :data="rows" v-loading="loading" stripe empty-text="暂无物料数据">
+        <el-table-column prop="materialCode" label="物料编码" min-width="140" />
+        <el-table-column prop="materialName" label="物料名称" min-width="180" />
+        <el-table-column prop="materialSpec" label="规格型号" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="materialType" label="物料类别" min-width="110"><template #default="{row}">{{ zh(row.materialType) }}</template></el-table-column>
+        <el-table-column prop="baseUnitCode" label="基本单位" width="100"><template #default="{row}">{{ zh(row.unitLabel || row.baseUnitCode) }}</template></el-table-column>
+        <el-table-column prop="purchaseUnitCode" label="采购单位" width="100"><template #default="{row}">{{ zh(row.purchaseUnitCode) }}</template></el-table-column>
+        <el-table-column prop="safetyStock" label="安全库存" width="110" />
+        <el-table-column prop="inspectionRequired" label="是否需检验" width="120"><template #default="{row}">{{ zh(row.inspectionRequired) }}</template></el-table-column>
+        <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{ mdmStatus(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column prop="versionNo" label="版本" width="80" />
+        <el-table-column prop="updatedAt" label="更新时间" min-width="170" />
+      </el-table>
+      <TablePager v-if="rows.length || total" v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load" />
+    </el-card>
+  </section>
+</template>
+
+<style scoped>
+.material-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.page-head span{color:#3472d2;font-size:11px;font-weight:750;letter-spacing:1px}.page-head h1{margin:7px 0;color:#203b5b;font-size:27px}.page-head p{margin:0;color:#8291a4;font-size:13px}.toolbar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:15px}.toolbar-note{margin-right:auto;color:#8392a6;font-size:12px}.toolbar .el-select{width:170px}
+</style>

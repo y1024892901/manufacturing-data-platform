@@ -45,7 +45,7 @@
 | **ERP** | ★★★☆☆ | 销售订单 → 信用 → ATP → MRP → 生产订单 → 开票 → 应收 → 回款 → 自动凭证 | 8 个本职模块全部只到「部分实现」，无单据可关闭或作废 |
 | **PLM** | ★★★☆☆ | ECR → 影响分析 → ECO（三级审批）→ ECN → 实施建 MDM 新版本 | `domain/workflow/integration/query` 四层全空；工艺规划、失效控制、报表为零 |
 | **SRM** | ★★☆☆☆ | 准入 → 询报价定标 → 采购订单 → ASN 到货 | 对账协同无表无接口；绩效/8D/订单变更/资质只有表没有逻辑 |
-| **CRM** | ★★☆☆☆ | 报价 → 合同 → ERP 销售订单（3 审批流 + 3 幂等事件） | 7 个模块均缺关闭/作废；接口无业务权限校验 |
+| **CRM** | ★★☆☆☆ | 报价 → 合同 → ERP 销售订单（3 审批流 + 3 幂等事件）；已补单据 CRUD 页面、行级编辑规则和接口权限 | 线索/报价/合同仍缺终态关闭作废，客诉闭环与销售漏斗待完成；V53/V54 字段及 CRUD 权限迁移尚未应用 |
 | **EAM** | ★★☆☆☆ | 设备建档 → 故障上报 → 维修完工 → 设备恢复 | 仅用 entity/repo/controller 三层；service/domain/workflow/integration/query 全空 |
 | **能源** | ★☆☆☆☆ | 能耗录入 + 单位能耗自动计算 | 两个实体都无状态字段；定额、异常、碳管理、分摊均未实现 |
 | **MES** | ★☆☆☆☆ | 工单 + 报工两条骨架 | 7 个本职模块中 5 个零代码（在制品、领退料、Andon、返工报废、报表） |
@@ -80,7 +80,7 @@
 
 以下问题跨多个模块重复出现，属结构性而非个别疏漏：
 
-1. **接口级权限普遍缺失**。`SecurityConfig` 只提供 `SYSTEM_<系统码>` 的粗粒度门禁；ERP、SRM、MES、EAM、能源、CRM 的接口**没有任何 `@PreAuthorize`**，种子数据里已定义的细粒度权限码无人读取。
+1. **接口级权限仍有缺口**。`SecurityConfig` 提供 `SYSTEM_<系统码>` 系统门禁；CRM 控制器已使用 `@PreAuthorize` 并按查看/新增/修改/删除分权，ERP、SRM、MES、EAM、能源仍需逐步补齐方法级权限。
 2. **事件只发不收**。`BusinessEventService` 把事件写入 outbox 并投递到 `biz_inbox`，但**全仓库没有任何模块订阅消费**。跨系统联动实际靠同进程直接跨库写入实现。
 3. **JPA 实体落后于表结构**。多个模块的迁移脚本加了列，实体未映射，导致接口查不到这些字段（见各 `STATUS.md` 的具体列清单）。
 4. **单据普遍走不到终态**。缺少「关闭 / 作废」动作是十系统里最普遍的缺口。
@@ -93,7 +93,7 @@
 | # | 位置 | 问题 |
 |---|---|---|
 | 1 | `BomController:22,25,26` | 三个接口守卫 `hasAuthority('MDM:BOM:UPDATE')`，但该权限码**不在权限字典中**（MDM 权限码全集无此项），任何角色含 ADMIN 都无法调用——现象是「能建 BOM 但不能改 BOM」 |
-| 2 | `CrmP2Service.customer360()` | 查询 `src_mdm.md_customer_contact`，该表**全仓无建表语句**；MDM 实际建的是 `md_partner_contact`（V16）——客户 360 的联系人查询会直接报表不存在 |
+| 2 | `CrmP2Service.customer360()` | **已修复**：联系人查询改为 MDM 实际存在的 `md_partner_contact`（V16），仅保留本行为历史缺陷记录 |
 | 3 | `MasterDataDistributor.writeToEnergy()` | 方法体为 `return 0;`，能源的 MDM 分发是**空实现**，`energy_md_equipment` 建表后从未被写入 |
 | 4 | `P3CrudService.sc()` | SRM 的 `supplier-quality` 状态接口按 `status` 列判定，实际表列名为 `eight_d_status`——该接口任何调用必被拒 |
 | 5 | `PlmCatalogController` | 使用 `PLM:PRODUCT:UPDATE` / `PLM:DOCUMENT:UPDATE` 守卫，两权限码在任何 SQL 中都不存在 |

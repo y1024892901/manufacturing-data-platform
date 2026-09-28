@@ -40,6 +40,29 @@ public interface WfTaskRepository extends JpaRepository<WfTask, Long> {
             """)
     Page<WfTask> findMyPendingPaged(@Param("roles") Collection<String> roles, @Param("username") String username, Pageable pageable);
 
+    @Query("""
+            SELECT t FROM WfTask t
+            WHERE t.taskStatus = 'PENDING'
+              AND t.instanceId IN (SELECT i.id FROM WfInstance i WHERE i.bizType NOT IN :excludedBizTypes)
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
+            ORDER BY t.createdAt ASC
+            """)
+    Page<WfTask> findMyPendingPagedExcludingBizTypes(@Param("roles") Collection<String> roles,
+                                                       @Param("username") String username,
+                                                       @Param("excludedBizTypes") Collection<String> excludedBizTypes,
+                                                       Pageable pageable);
+
+    @Query("""
+            SELECT t FROM WfTask t
+            WHERE t.taskStatus = 'PENDING'
+              AND t.instanceId IN (SELECT i.id FROM WfInstance i WHERE i.bizType NOT IN :excludedBizTypes)
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
+            ORDER BY t.createdAt ASC
+            """)
+    List<WfTask> findMyPendingExcludingBizTypes(@Param("roles") Collection<String> roles,
+                                                  @Param("username") String username,
+                                                  @Param("excludedBizTypes") Collection<String> excludedBizTypes);
+
     /** 待办数量（首页角标用，避免拉全量数据） */
     @Query("""
             SELECT COUNT(t) FROM WfTask t
@@ -47,6 +70,16 @@ public interface WfTaskRepository extends JpaRepository<WfTask, Long> {
               AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
             """)
     long countMyPending(@Param("roles") Collection<String> roles, @Param("username") String username);
+
+    @Query("""
+            SELECT COUNT(t) FROM WfTask t
+            WHERE t.taskStatus = 'PENDING'
+              AND t.instanceId IN (SELECT i.id FROM WfInstance i WHERE i.bizType NOT IN :excludedBizTypes)
+              AND (t.assignedUser = :username OR (t.assignedUser IS NULL AND t.approverRole IN :roles))
+            """)
+    long countMyPendingExcludingBizTypes(@Param("roles") Collection<String> roles,
+                                          @Param("username") String username,
+                                          @Param("excludedBizTypes") Collection<String> excludedBizTypes);
 
     /** 我已处理过的任务 */
     @Query("""

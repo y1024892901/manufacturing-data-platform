@@ -19,5 +19,13 @@ public class WorkshopUsage {
     @Column(name = "unit_code") private String unitCode;
     @Column(name = "total_output") private BigDecimal totalOutput;
     @Column(name = "unit_consumption") private BigDecimal unitConsumption;
+    @Column(name = "shift_code") private String shiftCode;
+    @Column(name = "cost_center_code") private String costCenterCode;
+    @Column(name = "baseline_value", precision = 18, scale = 4) private BigDecimal baselineValue;
+    @Column(name = "deviation_rate", precision = 8, scale = 4) private BigDecimal deviationRate;
+    @Column(name = "warning_threshold_percent", precision = 8, scale = 4) private BigDecimal warningThresholdPercent;
+    @Column(name = "is_abnormal", nullable = false) private Boolean abnormal = false;
+    @Column(name = "remark", length = 1000) private String remark;
     @Column(name = "created_at") private LocalDateTime createdAt;
+    @Column(name = "updated_at") private LocalDateTime updatedAt;
 }

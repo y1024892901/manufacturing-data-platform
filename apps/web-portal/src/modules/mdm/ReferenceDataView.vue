@@ -1,23 +1,99 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, onMounted, ref, watch } from 'vue'
 import http from '../../api/http'
-type Field={key:string;db:string;label:string;type?:'select'|'number'|'boolean';options?:string[];required?:boolean}
-const props=defineProps<{kind:string}>()
-const configs:Record<string,{title:string;subtitle:string;fields:Field[]}>= {
-  categories:{title:'物料分类',subtitle:'维护多层分类树和末级挂载规则。',fields:[{key:'categoryCode',db:'category_code',label:'分类编码',required:true},{key:'categoryName',db:'category_name',label:'分类名称',required:true},{key:'parentId',db:'parent_id',label:'上级ID',type:'number'},{key:'categoryLevel',db:'category_level',label:'层级',type:'number'},{key:'leaf',db:'is_leaf',label:'末级分类',type:'boolean'},{key:'categoryPath',db:'category_path',label:'分类路径'}]},
-  units:{title:'单位与换算',subtitle:'维护数量、重量、长度、面积和时间单位及基准换算。',fields:[{key:'unitCode',db:'unit_code',label:'单位编码',required:true},{key:'unitName',db:'unit_name',label:'单位名称',required:true},{key:'unitType',db:'unit_type',label:'单位类型',type:'select',options:['QUANTITY','WEIGHT','LENGTH','AREA','TIME'],required:true},{key:'baseUnitCode',db:'base_unit_code',label:'基本单位'},{key:'convertRate',db:'convert_rate',label:'换算率',type:'number'}]},
-  organizations:{title:'组织主数据',subtitle:'统一维护公司、工厂、车间和产线层级。',fields:[{key:'orgCode',db:'org_code',label:'组织编码',required:true},{key:'orgName',db:'org_name',label:'组织名称',required:true},{key:'orgType',db:'org_type',label:'组织类型',type:'select',options:['COMPANY','FACTORY','WORKSHOP','LINE'],required:true},{key:'parentId',db:'parent_id',label:'上级ID',type:'number'},{key:'orgLevel',db:'org_level',label:'层级',type:'number'},{key:'managerUserId',db:'manager_user_id',label:'负责人ID',type:'number'}]},
-  'cost-centers':{title:'成本中心',subtitle:'连接组织、生产订单、维修与能源成本归集。',fields:[{key:'ccCode',db:'cc_code',label:'成本中心编码',required:true},{key:'ccName',db:'cc_name',label:'成本中心名称',required:true},{key:'orgId',db:'org_id',label:'所属组织ID',type:'number'},{key:'ccType',db:'cc_type',label:'类型',type:'select',options:['PRODUCTION','SERVICE','ADMIN']},{key:'managerEmpId',db:'manager_emp_id',label:'负责人员工ID',type:'number'}]},
-  subjects:{title:'会计科目',subtitle:'统一维护资产、负债、权益、成本和收入科目层级。',fields:[{key:'subjectCode',db:'subject_code',label:'科目编码',required:true},{key:'subjectName',db:'subject_name',label:'科目名称',required:true},{key:'subjectType',db:'subject_type',label:'科目类型',type:'select',options:['ASSET','LIABILITY','EQUITY','COST','REVENUE'],required:true},{key:'parentId',db:'parent_id',label:'上级ID',type:'number'},{key:'subjectLevel',db:'subject_level',label:'层级',type:'number'},{key:'leaf',db:'is_leaf',label:'明细科目',type:'boolean'}]}
+import { zh, zhKey } from '../../shared/display'
+
+type Field = { key: string; db: string; label: string }
+type Config = { title: string; subtitle: string; fields: Field[] }
+const props = defineProps<{ kind: string }>()
+const configs: Record<string, Config> = {
+  categories: { title: '物料分类', subtitle: '查看物料分类层级、路径和末级挂载规则。', fields: [
+    { key: 'categoryCode', db: 'category_code', label: '分类编码' }, { key: 'categoryName', db: 'category_name', label: '分类名称' },
+    { key: 'parentId', db: 'parent_id', label: '上级记录编号' }, { key: 'categoryLevel', db: 'category_level', label: '层级' },
+    { key: 'leaf', db: 'is_leaf', label: '末级分类' }, { key: 'categoryPath', db: 'category_path', label: '分类路径' }
+  ] },
+  units: { title: '单位与换算', subtitle: '查看数量、重量、长度、面积和时间单位及其换算关系。', fields: [
+    { key: 'unitCode', db: 'unit_code', label: '单位编码' }, { key: 'unitName', db: 'unit_name', label: '单位名称' },
+    { key: 'unitType', db: 'unit_type', label: '单位类型' }, { key: 'baseUnitCode', db: 'base_unit_code', label: '基本单位' },
+    { key: 'convertRate', db: 'convert_rate', label: '换算率' }
+  ] },
+  organizations: { title: '组织架构', subtitle: '查看公司、工厂、车间和产线组织层级。', fields: [
+    { key: 'orgCode', db: 'org_code', label: '组织编码' }, { key: 'orgName', db: 'org_name', label: '组织名称' },
+    { key: 'orgType', db: 'org_type', label: '组织类型' }, { key: 'parentId', db: 'parent_id', label: '上级记录编号' },
+    { key: 'orgLevel', db: 'org_level', label: '组织层级' }, { key: 'managerUserId', db: 'manager_user_id', label: '负责人编号' }
+  ] },
+  'cost-centers': { title: '成本中心', subtitle: '查看组织、生产订单、维修与能源成本归集信息。', fields: [
+    { key: 'ccCode', db: 'cc_code', label: '成本中心编码' }, { key: 'ccName', db: 'cc_name', label: '成本中心名称' },
+    { key: 'orgId', db: 'org_id', label: '所属组织编号' }, { key: 'ccType', db: 'cc_type', label: '成本中心类型' },
+    { key: 'managerEmpId', db: 'manager_emp_id', label: '负责人员工编号' }
+  ] },
+  subjects: { title: '会计科目', subtitle: '查看资产、负债、权益、成本和收入科目层级。', fields: [
+    { key: 'subjectCode', db: 'subject_code', label: '科目编码' }, { key: 'subjectName', db: 'subject_name', label: '科目名称' },
+    { key: 'subjectType', db: 'subject_type', label: '科目类型' }, { key: 'parentId', db: 'parent_id', label: '上级记录编号' },
+    { key: 'subjectLevel', db: 'subject_level', label: '科目层级' }, { key: 'leaf', db: 'is_leaf', label: '明细科目' }
+  ] }
 }
-const config=computed(()=>configs[props.kind]),rows=ref<any[]>([]),loading=ref(false),dialog=ref(false),editingId=ref<number|null>(null),form=reactive<any>({})
-async function load(){loading.value=true;try{const{data}=await http.get(`/mdm/reference/${props.kind}`);rows.value=data.data||[]}finally{loading.value=false}}
-function create(){editingId.value=null;Object.keys(form).forEach(k=>delete form[k]);for(const field of config.value.fields)form[field.key]=field.type==='boolean'?true:field.type==='number'?undefined:'';dialog.value=true}
-function edit(row:any){editingId.value=row.id;for(const field of config.value.fields)form[field.key]=row[field.db];dialog.value=true}
-async function save(){const missing=config.value.fields.find(f=>f.required&&!form[f.key]);if(missing)return ElMessage.warning(`请填写${missing.label}`);if(editingId.value)await http.put(`/mdm/reference/${props.kind}/${editingId.value}`,form);else await http.post(`/mdm/reference/${props.kind}`,form);ElMessage.success('主数据已保存并生成新版本');dialog.value=false;await load()}
-async function disable(row:any){await ElMessageBox.confirm('停用后下游不能再用于新业务，历史单据仍保留。','停用确认',{type:'warning'});await http.delete(`/mdm/reference/${props.kind}/${row.id}`);ElMessage.success('主数据已停用');await load()}
-watch(()=>props.kind,load);onMounted(load)
+
+const config = computed(() => configs[props.kind])
+const rows = ref<any[]>([])
+const loading = ref(false)
+const selected = ref<any>(null)
+const detailVisible = ref(false)
+
+function mdmStatus(value: unknown) {
+  return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
+}
+
+function display(value: unknown, key: string) {
+  if (key === 'status') return mdmStatus(value)
+  return zh(value)
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get(`/mdm/reference/${props.kind}`)
+    rows.value = data.data || []
+  } finally {
+    loading.value = false
+  }
+}
+
+function open(row: any) {
+  selected.value = row
+  detailVisible.value = true
+}
+
+watch(() => props.kind, load)
+onMounted(load)
 </script>
-<template><section class="ref-page"><div class="page-head"><div><span>MASTER DATA REFERENCE</span><h1>{{config.title}}</h1><p>{{config.subtitle}}</p></div><el-button type="primary" @click="create">新增{{config.title}}</el-button></div><el-card shadow="never"><el-table :data="rows" v-loading="loading" stripe><el-table-column v-for="field in config.fields" :key="field.db" :prop="field.db" :label="field.label" min-width="125"/><el-table-column prop="status" label="状态" width="105"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{$zh(row.status)}}</el-tag></template></el-table-column><el-table-column prop="version_no" label="版本" width="75"/><el-table-column label="操作" width="130" fixed="right"><template #default="{row}"><el-button link type="primary" @click="edit(row)">编辑</el-button><el-button link type="warning" :disabled="row.status==='DISABLED'" @click="disable(row)">停用</el-button></template></el-table-column></el-table><el-empty v-if="!loading&&!rows.length" description="暂无主数据，可创建第一条记录。"/></el-card><el-dialog v-model="dialog" :title="`${editingId?'编辑':'新增'}${config.title}`" width="650px"><el-form label-position="top"><el-row :gutter="16"><el-col v-for="field in config.fields" :key="field.key" :span="12"><el-form-item :label="field.label" :required="field.required"><el-select v-if="field.type==='select'" v-model="form[field.key]" style="width:100%"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"/></el-select><el-switch v-else-if="field.type==='boolean'" v-model="form[field.key]"/><el-input-number v-else-if="field.type==='number'" v-model="form[field.key]" :min="0" style="width:100%"/><el-input v-else v-model="form[field.key]" :disabled="Boolean(editingId)&&field.key.toLowerCase().endsWith('code')"/></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" @click="save">保存</el-button></template></el-dialog></section></template>
-<style scoped>.ref-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:17px}.page-head span{color:#3775d6;font-size:10px;font-weight:800;letter-spacing:1.4px}.page-head h1{margin:6px 0;color:#243d5d;font-size:25px}.page-head p{color:#8291a4;font-size:12px}</style>
+
+<template>
+  <section class="reference-page">
+    <header class="page-head">
+      <div><span>权威主数据 · 只读查询</span><h1>{{ config.title }}</h1><p>{{ config.subtitle }}</p></div>
+      <el-tag type="info" effect="light" round>只读模式</el-tag>
+    </header>
+    <el-card shadow="never">
+      <div class="table-caption">{{ config.title }}档案 <span>{{ rows.length }} 条记录</span></div>
+      <el-table :data="rows" v-loading="loading" stripe empty-text="暂无主数据">
+        <el-table-column v-for="field in config.fields" :key="field.db" :prop="field.db" :label="field.label" min-width="135">
+          <template #default="{row}">{{ display(row[field.db], field.key) }}</template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{ mdmStatus(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column prop="version_no" label="版本" width="85" />
+        <el-table-column label="操作" width="105" fixed="right"><template #default="{row}"><el-button link type="primary" @click="open(row)">查看详情</el-button></template></el-table-column>
+      </el-table>
+      <el-empty v-if="!loading && !rows.length" description="暂无可查询的主数据" />
+    </el-card>
+    <el-drawer v-model="detailVisible" :title="`${config.title}详情`" size="560px">
+      <el-descriptions v-if="selected" :column="1" border>
+        <el-descriptions-item v-for="field in Object.keys(selected)" :key="field" :label="zhKey(field)">{{ display(selected[field], field) }}</el-descriptions-item>
+      </el-descriptions>
+    </el-drawer>
+  </section>
+</template>
+
+<style scoped>
+.reference-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.page-head span{color:#3472d2;font-size:11px;font-weight:750;letter-spacing:1px}.page-head h1{margin:7px 0;color:#203b5b;font-size:27px}.page-head p{margin:0;color:#8291a4;font-size:13px}.table-caption{display:flex;justify-content:space-between;margin:0 0 14px;color:#334d6b;font-size:14px;font-weight:700}.table-caption span{color:#8795a8;font-size:12px;font-weight:400}
+</style>

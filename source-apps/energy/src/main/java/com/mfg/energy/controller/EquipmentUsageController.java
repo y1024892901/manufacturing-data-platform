@@ -1,2 +1,37 @@
-package com.mfg.energy.controller;import com.mfg.common.api.*;import com.mfg.common.exception.BizException;import com.mfg.energy.entity.EquipmentUsage;import com.mfg.energy.repo.EquipmentUsageRepository;import lombok.RequiredArgsConstructor;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.math.*;import java.time.*;
-@RestController @RequestMapping("/api/energy/usages") @RequiredArgsConstructor public class EquipmentUsageController{private final EquipmentUsageRepository repo;@PostMapping @PreAuthorize("hasAuthority('ENERGY:USAGE:CREATE')") public ApiResponse<EquipmentUsage> create(@RequestBody EquipmentUsage u){if(u.getEnergyValue()==null||u.getEnergyValue().signum()<0)throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"能耗量必须为非负数");u.setStatDate(u.getStatDate()==null?LocalDate.now():u.getStatDate());if(u.getOutputQty()!=null&&u.getOutputQty().signum()>0)u.setUnitConsumption(u.getEnergyValue().divide(u.getOutputQty(),6,RoundingMode.HALF_UP));return ApiResponse.ok(repo.save(u));}@GetMapping @PreAuthorize("hasAuthority('ENERGY:USAGE:VIEW')") public ApiResponse<java.util.List<EquipmentUsage>> list(){return ApiResponse.ok(repo.findAll());}}
+package com.mfg.energy.controller;
+
+import com.mfg.common.api.ApiResponse;
+import com.mfg.energy.entity.EquipmentUsage;
+import com.mfg.energy.service.EquipmentUsageService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/energy/usages")
+@RequiredArgsConstructor
+public class EquipmentUsageController {
+    private final EquipmentUsageService service;
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('ENERGY:USAGE:VIEW')")
+    public ApiResponse<List<EquipmentUsage>> list() { return ApiResponse.ok(service.list()); }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ENERGY:USAGE:VIEW')")
+    public ApiResponse<EquipmentUsage> get(@PathVariable Long id) { return ApiResponse.ok(service.get(id)); }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('ENERGY:USAGE:CREATE')")
+    public ApiResponse<EquipmentUsage> create(@RequestBody EquipmentUsage usage) { return ApiResponse.ok(service.create(usage)); }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ENERGY:USAGE:UPDATE')")
+    public ApiResponse<EquipmentUsage> update(@PathVariable Long id, @RequestBody EquipmentUsage usage) { return ApiResponse.ok(service.update(id, usage)); }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ENERGY:USAGE:DELETE')")
+    public ApiResponse<Void> delete(@PathVariable Long id) { service.delete(id); return ApiResponse.ok(); }
+}

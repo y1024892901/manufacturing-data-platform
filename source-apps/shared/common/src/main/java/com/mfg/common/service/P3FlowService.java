@@ -22,19 +22,24 @@ public class P3FlowService {
     private final java.util.List<com.mfg.common.api.DataVisibility> visibility;
 
     @Transactional
-    public Map<String, Object> awardRfq(long id, long quoteId) {
+    public Map<String, Object> awardRfq(long id, long quoteId, String purchaseUser) {
         Map<String, Object> rfq = one("SELECT * FROM src_srm.srm_rfq WHERE id=? FOR UPDATE", id);
         if (!java.util.Set.of("PUBLISHED", "QUOTING", "CLOSED").contains(String.valueOf(rfq.get("status"))))
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有已发布或已截标的询价单可以定标");
         Map<String, Object> quote = one("SELECT * FROM src_srm.srm_supplier_quote WHERE id=? AND rfq_id=?", quoteId, id);
         String poNo = "PO" + System.currentTimeMillis();
+        String supplierCode = String.valueOf(quote.get("supplier_code"));
+        String materialCode = String.valueOf(rfq.get("material_code"));
+        String supplierName = lookupOr("SELECT supplier_name FROM src_srm.srm_md_supplier WHERE supplier_code=?", supplierCode, supplierCode);
+        String materialName = lookupOr("SELECT material_name FROM src_srm.srm_md_material WHERE material_code=?", materialCode, materialCode);
+        String unitCode = lookupOr("SELECT COALESCE(purchase_unit_code,base_unit_code) FROM src_srm.srm_md_material WHERE material_code=?", materialCode, "PCS");
         db.update("""
             INSERT INTO src_srm.srm_purchase_order
-            (purchase_order_no,supplier_code,material_code,order_qty,unit_code,unit_price,total_amount,order_date,expected_date,order_status,purchase_user,source_requisition_no)
-            VALUES(?,?,?,?,?,?,?,?,?,'CREATED','system',?)
-            """, poNo, quote.get("supplier_code"), rfq.get("material_code"), rfq.get("quantity"), "PCS",
+            (purchase_order_no,supplier_code,supplier_name,material_code,material_name,order_qty,unit_code,unit_price,total_amount,order_date,expected_date,order_status,purchase_user,source_requisition_no)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,'CREATED',?,?)
+            """, poNo, supplierCode, supplierName, materialCode, materialName, rfq.get("quantity"), unitCode,
                 quote.get("unit_price"), decimal(rfq.get("quantity")).multiply(decimal(quote.get("unit_price"))),
-                LocalDate.now(), quote.get("delivery_date"), rfq.get("source_requisition_no"));
+                LocalDate.now(), quote.get("delivery_date"), purchaseUser, rfq.get("source_requisition_no"));
         db.update("UPDATE src_srm.srm_rfq SET status='AWARDED',winner_supplier_code=? WHERE id=?", quote.get("supplier_code"), id);
         db.update("UPDATE src_srm.srm_supplier_quote SET status=IF(id=?,'AWARDED','LOST') WHERE rfq_id=?", quoteId, id);
         long poId = db.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
@@ -102,10 +107,10 @@ public class P3FlowService {
 
     private void upsertInventory(Map<String, Object> receipt, BigDecimal qty) {
         db.update("""
-            INSERT INTO src_wms.wms_inventory(material_code,warehouse_code,location_code,batch_no,on_hand_qty,available_qty,unit_code,quality_status,received_date)
-            VALUES(?,?,NULL,?,?,?,'PCS','AVAILABLE',CURDATE())
-            ON DUPLICATE KEY UPDATE on_hand_qty=on_hand_qty+VALUES(on_hand_qty),available_qty=available_qty+VALUES(available_qty),quality_status='AVAILABLE',received_date=CURDATE()
-            """, receipt.get("material_code"), receipt.get("warehouse_code"), receipt.get("batch_no"), qty, qty);
+            INSERT INTO src_wms.wms_inventory(material_code,warehouse_code,location_code,batch_no,on_hand_qty,available_qty,unit_code,quality_status,received_date,expiry_date)
+            VALUES(?,?,NULL,?,?,?,'PCS','AVAILABLE',CURDATE(),?)
+            ON DUPLICATE KEY UPDATE on_hand_qty=on_hand_qty+VALUES(on_hand_qty),available_qty=available_qty+VALUES(available_qty),quality_status='AVAILABLE',received_date=CURDATE(),expiry_date=COALESCE(VALUES(expiry_date),expiry_date)
+            """, receipt.get("material_code"), receipt.get("warehouse_code"), receipt.get("batch_no"), qty, qty, receipt.get("expiry_date"));
     }
 
     private Map<String, Object> one(String sql, Object... args) {
@@ -114,4 +119,8 @@ public class P3FlowService {
         return rows.get(0);
     }
     private BigDecimal decimal(Object value) { return value instanceof BigDecimal b ? b : new BigDecimal(String.valueOf(value)); }
+    private String lookupOr(String sql, String key, String fallback) {
+        var values = db.queryForList(sql, String.class, key);
+        return values.isEmpty() || values.get(0) == null || values.get(0).isBlank() ? fallback : values.get(0);
+    }
 }

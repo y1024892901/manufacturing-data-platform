@@ -11,7 +11,7 @@
 
 CRM 补上**线索 / 报价 / 合同三类单据的关闭与作废**、打通**客诉闭环**（登记 → 转派 → 关联 QMS 8D → 关闭），权限点落到接口，销售漏斗报表落地——五项验收全达标。
 
-> 两个系统的④均已由出向事件侧达标，本计划只补**入向消费**；两个系统的界面工作归 [08 前端与运营报表](08-frontend-reports.md)，本计划只做后端。
+> 两个系统的④均已由出向事件侧达标，本计划仍需补**入向消费**。以下原计划中的前端范围描述为制定时基线；2026-09-28 已按 CRM 用户需求提前补齐中文 CRM 单据页、CRUD、审批操作提示与可选字段，详见 [CRM 状态](../../source-apps/crm/STATUS.md)。
 
 ## 现状
 
@@ -29,16 +29,18 @@ CRM 补上**线索 / 报价 / 合同三类单据的关闭与作废**、打通**�
 
 **CRM（★★☆☆☆，验收矩阵：①部分 ②✗ ③部分 ④✓ ⑤✓）**
 
-「报价 → 合同 → ERP 销售订单」主线已打通，带 3 条审批流（`QUOTATION`、`QUOTATION_RISK`、`CONTRACT`）与 3 个幂等 Outbox 事件。分层为 `entity/` 2 + `repo/` 2 + `service/` 1 + `controller/` 2，`domain/`、`workflow/`、`integration/`、`query/` 四层全空，回调在非标准的 `callback/` 包。
+「报价 → 合同 → ERP 销售订单」主线已打通，带 3 条审批流（`QUOTATION`、`QUOTATION_RISK`、`CONTRACT`）与 3 个幂等 Outbox 事件。CRM 页面及单据 CRUD 已提前实施，当前服务层有 `CrmP2Service` 和 `CrmRecordService`；`domain/`、`workflow/`、`integration/`、`query/` 四层仍待整理，回调仍需按计划归位。
 
 与最低验收的差距（逐条证据见 [crm/STATUS.md](../../source-apps/crm/STATUS.md#对照最低验收)）：
 
 - **② 部分**：线索（`NEW → FOLLOWING → CONVERTED`）、报价（`DRAFT → PENDING → APPROVED → EFFECTIVE → EXPIRED`）、合同（`DRAFT → PENDING → APPROVED → ACTIVE`）三类可流转，但 **`TERMINATED`、`CANCELED` 只出现在「该报价是否已关联有效合同」的排除条件里，没有任何代码写入**；线索的 `invalid_reason` 也无路径。
-- **① 部分**：两个 Controller（`CrmP2Controller`、`OpportunityController`）**零 `@PreAuthorize`**；`CRM:*` 码共 10 个已有定义与授予——`08_seed_data.sql` 定义 5 个（`CRM:OPPORTUNITY:*` 五个动作），`V25` 再补 5 个（`CRM:LEAD:CREATE`、`CRM:LEAD:ASSIGN`、`CRM:OPPORTUNITY:STAGE`、`CRM:QUOTATION:SUBMIT`、`CRM:CONTRACT:ACTIVATE`），由 `09_role_permission.sql` 授给四个销售岗位——但接口一处不读。
+- **① 部分**：两个 Controller 已落实 `@PreAuthorize`。原有 CRM 权限码用于查看、新增、审批和流转；本轮新增的单据修改/删除权限由 `V54__p4_crm_crud_permissions.sql` 定义并授予销售角色，脚本尚未应用。
 - **③ 部分**：审批有三条，但**异常闭环未实现**——客诉只登记为 `OPEN`，`crm_complaint` 的 `solution`、`customer_feedback`、`closed_at` 三列无人写入，无转派、无 QMS 8D/CAPA 关联。
 - **缺口**：`V19` 建的 `crm_opportunity_product`、`crm_competitor`、`crm_sales_forecast` 三张表**全仓库零读写**；预测的 `product_code` 在 SQL 中写死 `NULL`；`Opportunity` 实体未映射 `source_lead_no`、`probability`、`expected_close_date`、`lost_reason`、`contact_name` 五列（由 SQL 写入，JPA 读接口看不到）；`CrmP2Service` 单类约 500 行承载 7 个模块。
 
 > 说明：`CrmP2Service.customer360()` 原读的 `src_mdm.md_customer_contact` 表全仓无建表语句（缺陷 #2，属 [01 缺陷修复](01-bugfix.md)）。**该缺陷已在工作区修复但尚未提交**：现行代码第 19 行已改为 `src_mdm.md_partner_contact WHERE partner_type='CUSTOMER' AND partner_id=(…)`，与 `V16` 实际建的联系人表一致。本计划**不重复修**，只需在 01 提交后复验客户 360 不再报错。
+
+> 2026-09-28 CRM 增量：V53 为线索、商机、报价、合同、客诉补充可选字段，V54 为 CRUD 权限；两条迁移脚本已编写但未应用。早前数据库验收范围停在 V40.2，因此本轮只完成代码、页面、文档和构建验证，数据库及真实接口验收待后续授权并启动本机服务。
 
 ## 任务拆解
 

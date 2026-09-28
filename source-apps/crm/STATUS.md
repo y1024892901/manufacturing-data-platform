@@ -1,10 +1,25 @@
 # crm/ — 目前进展
 
-> 截至 2026-09-22 · 对应整体计划见 [PLAN.md](PLAN.md)
+> 当前实施更新：2026-09-28 · 下方原有验收基线记录于 2026-09-22 · 整体计划见 [PLAN.md](PLAN.md)
+
+## 2026-09-28 客户主数据录入
+
+- CRM 新增「客户信息录入」菜单 `/crm/customer-entry`：提供客户档案新建、搜索列表和只读详情；不提供修改、删除或审批。
+- `POST /api/crm/customers` 将客户保存到唯一权威表 `src_mdm.md_customer`，创建即置为 `PUBLISHED`，同事务写入 `md_outbox` / `md_inbox` 并返回分发事件编号；后台沿用 MDM 分发器投递到 `BizType.CUSTOMER` 配置的 CRM、ERP 目标。
+- CRM 客户页与 MDM 页面读取同一主表；客户编码可自动生成，统一社会信用代码重复时拒绝保存。新权限与角色授权在 `V56__crm_customer_master_entry.sql`，**尚未应用**；应用迁移并启动服务后生效。
+
+## 2026-09-28 CRM 页面与 CRUD 更新
+
+- 六个 CRM 页面统一使用中文列名、状态和值映射；客户 360 的动态字段名和布尔值也转换为中文。接口异常显示在当前页面或编辑弹窗中。
+- 线索、商机、报价、合同、客诉现已补详情、修改、删除接口和页面操作；报价明细、合同回款计划随单据一起编辑。报价/合同进入审批或下游流程后按状态锁定，删除只允许未转换、未关联的草稿/开放单据。
+- 合同由已生效报价创建，报价和合同仍走既有审批回调；页面保留提交审批、生效、报价升版和合同转 ERP 订单操作。不存在的“商机直接生成订单”入口已移除。
+- 五类单据加入常见可选字段，来源与字段清单见 [CRM 补充字段来源](../../docs/crm-field-reference.md)。数据库脚本 `V53`（可选字段）、`V54`（CRUD 权限）和 `V56`（客户主数据录入权限）已编写，**尚未应用**；因此需要应用迁移并启动数据库/服务后才能做真实接口验收。
+- 接口已加方法级 CRM 权限。普通销售账号只能修改自己负责/创建的记录，主管/总监按授权范围处理；CRUD 新权限仅定义在待应用的 `V54`。
+- 尚未完成的计划项仍包括线索失效、报价作废、合同终止/归档、客诉闭环、商机产品/竞争对手、持久化预测快照、漏斗统计和端到端验收。
 
 ## 一句话结论
 
-**报价 → 合同 → ERP 订单这条「赢单交付」主线是打通且带审批与跨系统事件的，线索/商机/合同/客诉有接口但缺关闭作废与闭环，且两个 Controller 没有任何业务权限点校验、客户 360 的联系人表在库中不存在。**
+**报价 → 合同 → ERP 订单这条「赢单交付」主线已打通并带审批与跨系统事件；页面 CRUD 与方法级权限已补齐，数据库迁移待应用。终态关闭/作废、客诉闭环和漏斗分析仍未完成。**
 
 ## 已实现
 
@@ -26,7 +41,7 @@
 | `domain/` | **0 — 未实现** | 阶段白名单、跟进类型、风险阈值全是方法体字面量 |
 | `entity/` | 2 | `Opportunity`（`src_crm.crm_opportunity`）、`OpportunityFollow`（`src_crm.crm_opportunity_follow`） |
 | `repo/` | 2 | `OpportunityRepository`、`OpportunityFollowRepository` |
-| `service/` | 1 | `CrmP2Service`（线索/报价/合同/客诉/预测/客户 360 全在一个类） |
+| `service/` | 3 | `CrmP2Service`（业务流转）、`CrmRecordService`（单据 CRUD）与 `CustomerEntryService`（客户主数据录入） |
 | `controller/` | 2 | `OpportunityController`（商机 + 跟进）、`CrmP2Controller`（其余全部） |
 | `workflow/` | **0 — 未实现** | 回调改放在 `callback/`：`CrmApprovalCallback` |
 | `integration/` | **0 — 未实现** | 事件发布内联在 `CrmP2Service`，无集成层包 |
@@ -39,6 +54,8 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/api/crm/customers` | 查询已发布的 MDM 客户主档（`keyword` 搜索，按客户数据范围过滤） |
+| POST | `/api/crm/customers` | 新建客户主档：写入 `src_mdm.md_customer` 并在同事务排入 MDM Outbox 分发；无需审批，不提供修改/删除 |
 | GET | `/api/crm/leads` | 线索分页（`keyword` 匹配 `lead_no,customer_name,contact_name`；`status` 精确匹配） |
 | POST | `/api/crm/leads` | 新建线索（状态 `NEW`，`owner_user` 默认当前用户） |
 | POST | `/api/crm/leads/{id}/assign` | 分配线索（写 `crm_lead_assignment` 留痕 → 改负责人 → 置 `FOLLOWING`） |
@@ -70,7 +87,7 @@
 | GET | `/api/crm/opportunities/{id}/follows` | 跟进记录（按 `follow_at` 倒序） |
 | POST | `/api/crm/opportunities/{id}/follows` | 新增跟进（类型白名单 `CALL/VISIT/EMAIL/MEETING`） |
 
-**访问控制**：`SecurityConfig` 对 `/api/crm/**` 要求 authority `SYSTEM_CRM`（来自 `sys_user_system`）。**两个 CRM Controller 均无任何 `@PreAuthorize`**，即业务权限点未落到接口上（见验收第 1 项）。
+**访问控制**：`SecurityConfig` 对 `/api/crm/**` 要求 authority `SYSTEM_CRM`（来自 `sys_user_system`）；两个 CRM Controller 的查看、新增、修改、删除及流转接口均有方法级 CRM 权限。修改/删除的新增权限码及角色授予由尚未应用的 `V54` 提供。
 
 ## 数据表
 
@@ -96,7 +113,7 @@
 | `src_crm.crm_complaint` | 读写 | 同上 | `V18` |
 | `src_mdm.md_customer` | 读（`convert()` 校验发布态并取客户名、客户 360） | 同上 | `02_master_data.sql` |
 | `src_mdm.md_product` | 读（报价产品必须已发布） | 同上 | `02_master_data.sql` |
-| `src_mdm.md_customer_contact` | 读（客户 360 联系人） | 同上 | **无建表语句 —— 全仓库 SQL 中不存在该表** |
+| `src_mdm.md_partner_contact` | 读（客户 360 联系人，按 `partner_type='CUSTOMER'` 过滤） | `CrmP2Service.customer360()` | `V16` |
 | `src_erp.erp_sales_order` / `erp_sales_order_line` | 写（`createOrder()` 建单） | 同上 | `04_business_systems.sql` |
 | `src_erp.erp_receivable` | 读（客户 360 应收段） | 同上 | `04_business_systems.sql` |
 | `mfg_ops.biz_outbox` / `biz_inbox` | 写（经 `BusinessEventService.publish` + 定时 `dispatch`） | `BusinessEventService` | `V26` |
@@ -107,7 +124,7 @@
 
 | 验收项 | 状态 | 证据 / 缺口 |
 |---|---|---|
-| 1. 至少 5 个本职模块具有实体、服务、接口和角色权限 | **部分实现** | 有服务 + 接口 + 表的模块：线索、商机、报价、合同、客诉、销售预测、客户 360——7 个本职模块全部有接口，服务层 `CrmP2Service` 一个类承载。**实体层只有 2 个 JPA 实体**（`Opportunity`、`OpportunityFollow`），线索/报价/合同/客诉是纯 SQL + `Map`。角色权限：`08_seed_data.sql:128-132` 定义 `CRM:OPPORTUNITY:VIEW/CREATE/STAGE/CONVERT/PRICE`，`V25` 追加 `CRM:LEAD:CREATE`、`CRM:LEAD:ASSIGN`、`CRM:OPPORTUNITY:STAGE`、`CRM:QUOTATION:SUBMIT`、`CRM:CONTRACT:ACTIVATE`，`09_role_permission.sql:117-133` 授予 `SALES_REP`、`SALES_ASSISTANT`、`SALES_SUPERVISOR`、`SALES_DIRECTOR`。**缺口**：CRM 两个 Controller **零 `@PreAuthorize`**，角色权限没有落到接口，实际只有 `/api/crm/** → SYSTEM_CRM` 的系统级门禁 |
+| 1. 至少 5 个本职模块具有实体、服务、接口和角色权限 | **部分实现** | 线索、商机、报价、合同、客诉、销售预测、客户 360 均有接口；服务现分为 `CrmP2Service` 与 `CrmRecordService`。业务接口已落实 `@PreAuthorize`，V54 补充的修改/删除权限和角色授权尚待应用；线索/报价/合同/客诉仍以 SQL + `Map` 为主，实体层较薄 |
 | 2. 至少 3 类核心单据可以从创建流转到关闭或作废 | **部分实现** | 3 类单据可流转：线索（`NEW` → `FOLLOWING` → `CONVERTED`）、报价（`DRAFT` → `PENDING` → `APPROVED` → `EFFECTIVE` → `EXPIRED`，驳回 `REJECTED`）、合同（`DRAFT` → `PENDING` → `APPROVED` → `ACTIVE`，变更走新版本 + `previous_contract_id`）。**缺口**：三类都**没有关闭/作废**——`TERMINATED`、`CANCELED` 只出现在「该报价是否已关联有效合同」的排除条件里，没有任何代码写入；线索的失效（`invalid_reason`）也没有路径 |
 | 3. 至少 1 个审批流程和 1 个异常处理闭环 | **部分实现** | 审批流程**有三条**：`CRM_QUOTATION_APPROVAL`（销售主管一级，`V25`）、`CRM_QUOTATION_RISK_APPROVAL`（销售总监 + 财务主管两级，`V26`）、`CRM_CONTRACT_APPROVAL`（销售总监 + 财务主管两级，`V25`），统一回调 `CrmApprovalCallback`。**异常处理闭环未实现**：客诉只登记为 `OPEN`，无转派、无关联 QMS 8D/CAPA、无闭环评价；信用例外与 ATP 例外的闭环在 ERP 侧，不在 CRM |
 | 4. 至少 2 个向其他系统发送或消费的幂等业务事件 | **已实现** | 3 个事件经 `mfg_ops.biz_outbox`：`CRM.CONTRACT.ACTIVATED`（crm→erp）、`CRM.CONTRACT.ORDER_REQUESTED`（crm→erp）、`ERP.SALES_ORDER.CREATED`（erp→crm）。**幂等机制**：`event_id` 用 UUID 生成，`biz_outbox` 与 `biz_inbox` 均有唯一键 `(event_id, target_system)`，投递用 `INSERT IGNORE`，失败重试 3 次后置 `DEAD` 并可经 `retry()` 人工重放。**需注意**：仓库内没有读取 `biz_inbox` 执行业务动作的消费者，事件是「可观测 + 可重放」的投递记录；跨系统的实际业务效果（ERP 订单落库）由 CRM **直接跨库写 `src_erp`** 完成 |
@@ -115,14 +132,14 @@
 
 ## 未实现 / 缺口
 
-1. **接口无业务权限校验** —— `CrmP2Controller`、`OpportunityController` 均无 `@PreAuthorize`；权限点只存在于 `sys_permission` 与角色映射表，任何拥有 `SYSTEM_CRM` 的账号可执行全部动作（含合同生效、生成 ERP 订单）。
-2. **`src_mdm.md_customer_contact` 表不存在** —— `customer360()` 的联系人段必然报错；全仓库 SQL 里没有该表的建表语句。
+1. **新 CRUD 权限依赖待应用迁移** —— 页面和接口已就绪，但 `CRM:*:UPDATE/DELETE` 及角色授权只写在 V54 中；应用 V54 前相关调用会返回无权限。
+2. **单据终态与客诉闭环仍缺** —— 线索失效、报价作废、合同终止/归档以及客诉转派、QMS 8D 关联和关闭尚未实现。
 3. **三张建了不用的表** —— `crm_opportunity_product`、`crm_competitor`、`crm_sales_forecast`（均见 `V19`）无任何代码读写，对应「商机产品明细 / 竞争对手 / 预测快照」三个能力未实现。
 4. **客诉无闭环** —— `crm_complaint` 的 `solution`、`customer_feedback`、`closed_at` 三个字段无人写入；无转派、无 QMS 8D/CAPA 关联、无闭环评价。
 5. **合同缺终止 / 归档 / 续签**；线索缺失效动作。
 6. **预测维度不全** —— `product_code` 在 SQL 中写死 `NULL`，无区域维度、无目标达成、无漏斗分析。
 7. **无状态时间轴与操作审计** —— 单据没有状态变更历史，未关联 `wf_action_log`；无导出接口。
-8. **实体与 SQL 字段不一致** —— `Opportunity` 实体未映射 `source_lead_no`、`probability`、`expected_close_date`、`lost_reason`、`contact_name`，这些列由 `convert()` 与 `stage()` 用 SQL 写入，因此走 JPA 的读接口看不到它们。
+8. **宽表字段仍以 SQL 管理** —— `Opportunity` 已补映射 `source_lead_no`、`probability`、`expected_close_date`、`lost_reason`、`contact_name` 及本轮可选字段；线索、报价、合同和客诉尚未建立独立 JPA 实体。
 9. **`CrmP2Service` 单类过重** —— 一个类约 500 行承载 7 个业务模块；`list()` 用字符串拼接表名（虽有 `Set.of(...)` 白名单，仍是拼接）。
 10. **无 `domain/`、`workflow/`、`integration/`、`query/` 分层** —— 回调放在非标准的 `callback/` 包。
 11. **无自动化测试** —— `tests/unit`、`tests/integration`、`tests/e2e` 目录下只有 README，没有针对 CRM 的用例。

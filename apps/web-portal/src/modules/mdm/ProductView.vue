@@ -1,18 +1,100 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
 import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
 import { zh } from '../../shared/display'
-const rows=ref<any[]>([]),materials=ref<any[]>([]),loading=ref(false),dialog=ref(false),saving=ref(false),editingId=ref<number|null>(null),keyword=ref(''),status=ref(''),page=ref(1),size=ref(20),total=ref(0)
-const form=reactive<any>({})
-async function load(){loading.value=true;try{const[r,m]=await Promise.all([http.get('/mdm/products',{params:{keyword:keyword.value||undefined,status:status.value||undefined,page:page.value,size:size.value}}),http.get('/mdm/materials/consumable')]);rows.value=r.data.data.content;total.value=r.data.data.totalElements;materials.value=m.data.data||[];if(!rows.value.length&&total.value>0&&page.value>1){page.value--;await load()}}finally{loading.value=false}}
-function search(){page.value=1;load()}
-function create(){editingId.value=null;Object.assign(form,{productCode:'',productName:'',productModel:'',materialId:null,categoryId:null,unitCode:'PCS',weightKg:null,lifecycleStatus:'DESIGN',launchDate:'',eolDate:'',changeReason:''});dialog.value=true}
-function edit(row:any){editingId.value=row.id;Object.assign(form,{...row});dialog.value=true}
-async function save(){if(!form.productCode||!form.productName)return ElMessage.warning('请填写产品编码和名称');saving.value=true;try{if(editingId.value)await http.put(`/mdm/products/${editingId.value}`,form);else{await http.post('/mdm/products',form);page.value=1}ElMessage.success('产品主数据已保存为草稿');dialog.value=false;await load()}catch(e:any){ElMessage.error(e.message||'保存失败')}finally{saving.value=false}}
-async function submit(row:any){try{await http.post(`/mdm/products/${row.id}/submit`);ElMessage.success('已提交产品审批');await load()}catch(e:any){ElMessage.error(e.message||'提交失败')}}
+
+const rows = ref<any[]>([])
+const loading = ref(false)
+const keyword = ref('')
+const status = ref('')
+const page = ref(1)
+const size = ref(20)
+const total = ref(0)
+const detail = ref<any>(null)
+const detailVisible = ref(false)
+
+function mdmStatus(value: unknown) {
+  return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get('/mdm/products', {
+      params: { keyword: keyword.value || undefined, status: status.value || undefined, page: page.value, size: size.value }
+    })
+    rows.value = data.data?.content || []
+    total.value = data.data?.totalElements || 0
+    if (!rows.value.length && total.value && page.value > 1) {
+      page.value -= 1
+      await load()
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function open(row: any) {
+  const { data } = await http.get(`/mdm/products/${row.id}`)
+  detail.value = data.data
+  detailVisible.value = true
+}
+
+function search() {
+  page.value = 1
+  load()
+}
+
 onMounted(load)
 </script>
-<template><section class="biz-page"><div class="page-head"><div><span>产品主数据管理</span><h1>产品主数据</h1><p>统一维护产品、成品物料映射、生命周期与发布版本。</p></div><el-button type="primary" @click="create">新增产品</el-button></div><el-card shadow="never"><div class="toolbar"><el-input v-model="keyword" clearable placeholder="产品编码或名称" @keyup.enter="search"/><el-select v-model="status" clearable placeholder="全部状态" @change="search"><el-option v-for="s in ['DRAFT','PENDING','PUBLISHED','REJECTED','CHANGING']" :key="s" :label="zh(s)" :value="s"/></el-select><el-button @click="search">查询</el-button></div><el-table :data="rows" v-loading="loading" stripe><el-table-column prop="productCode" label="产品编码"/><el-table-column prop="productName" label="产品名称" min-width="180"/><el-table-column prop="productModel" label="型号"/><el-table-column prop="lifecycleStatus" label="生命周期"><template #default="{row}">{{zh(row.lifecycleStatus)}}</template></el-table-column><el-table-column prop="unitCode" label="单位" width="80"/><el-table-column prop="versionNo" label="版本" width="70"/><el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':row.status==='REJECTED'?'danger':'info'">{{zh(row.status)}}</el-tag></template></el-table-column><el-table-column label="操作" width="150" fixed="right"><template #default="{row}"><el-button link type="primary" :disabled="!['DRAFT','REJECTED'].includes(row.status)" @click="edit(row)">编辑</el-button><el-button link type="success" :disabled="!['DRAFT','REJECTED'].includes(row.status)" @click="submit(row)">提交</el-button></template></el-table-column></el-table><TablePager v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load"/></el-card><el-dialog v-model="dialog" :title="editingId?'编辑产品':'新增产品'" width="720px"><el-form label-position="top"><el-row :gutter="16"><el-col :span="12"><el-form-item label="产品编码" required><el-input v-model="form.productCode" :disabled="Boolean(editingId)"/></el-form-item></el-col><el-col :span="12"><el-form-item label="产品名称" required><el-input v-model="form.productName"/></el-form-item></el-col><el-col :span="12"><el-form-item label="产品型号"><el-input v-model="form.productModel"/></el-form-item></el-col><el-col :span="12"><el-form-item label="成品物料"><el-select v-model="form.materialId" clearable filterable style="width:100%"><el-option v-for="m in materials" :key="m.id" :label="`${m.materialCode} · ${m.materialName}`" :value="m.id"/></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="生命周期"><el-select v-model="form.lifecycleStatus" style="width:100%"><el-option v-for="s in ['DESIGN','TRIAL','MASS','PROD','EOL']" :key="s" :label="zh(s)" :value="s"/></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="单位"><el-input v-model="form.unitCode"/></el-form-item></el-col><el-col :span="12"><el-form-item label="上市日期"><el-date-picker v-model="form.launchDate" value-format="YYYY-MM-DD" style="width:100%"/></el-form-item></el-col><el-col :span="12"><el-form-item label="单重(kg)"><el-input-number v-model="form.weightKg" :min="0" style="width:100%"/></el-form-item></el-col><el-col :span="24"><el-form-item label="变更原因"><el-input v-model="form.changeReason"/></el-form-item></el-col></el-row></el-form><template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存草稿</el-button></template></el-dialog></section></template>
-<style scoped>.biz-page{max-width:1480px;margin:0 auto}.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:17px}.page-head span{color:#3775d6;font-size:10px;font-weight:800;letter-spacing:1.4px}.page-head h1{margin:6px 0;color:#243d5d;font-size:25px}.page-head p{color:#8291a4;font-size:12px}.toolbar{display:flex;gap:9px;margin-bottom:14px}.toolbar .el-input{width:260px}.toolbar .el-select{width:160px}</style>
+
+<template>
+  <section class="product-page">
+    <header class="page-head">
+      <div><span>权威主数据 · 只读查询</span><h1>产品主数据</h1><p>查询产品档案、生命周期、单位与版本信息。</p></div>
+      <el-tag type="info" effect="light" round>只读模式</el-tag>
+    </header>
+    <el-card shadow="never">
+      <div class="toolbar">
+        <div class="toolbar-note">共 {{ total }} 条产品记录</div>
+        <el-input v-model="keyword" clearable placeholder="输入产品编码或名称" @keyup.enter="search" />
+        <el-select v-model="status" clearable placeholder="全部状态" @change="search">
+          <el-option v-for="item in ['DRAFT','PENDING','PUBLISHED','REJECTED','CHANGING','DISABLED']" :key="item" :label="mdmStatus(item)" :value="item" />
+        </el-select>
+        <el-button :loading="loading" @click="search">查询</el-button>
+      </div>
+      <el-table :data="rows" v-loading="loading" stripe empty-text="暂无产品数据">
+        <el-table-column prop="productCode" label="产品编码" min-width="140" />
+        <el-table-column prop="productName" label="产品名称" min-width="180" />
+        <el-table-column prop="productModel" label="产品型号" min-width="145" />
+        <el-table-column prop="lifecycleStatus" label="生命周期" min-width="115"><template #default="{row}">{{ zh(row.lifecycleStatus) }}</template></el-table-column>
+        <el-table-column prop="unitCode" label="计量单位" width="100"><template #default="{row}">{{ zh(row.unitCode) }}</template></el-table-column>
+        <el-table-column prop="weightKg" label="单重（千克）" width="125" />
+        <el-table-column prop="versionNo" label="版本" width="80" />
+        <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{ mdmStatus(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column label="操作" width="105" fixed="right"><template #default="{row}"><el-button link type="primary" @click="open(row)">查看详情</el-button></template></el-table-column>
+      </el-table>
+      <TablePager v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load" />
+    </el-card>
+    <el-drawer v-model="detailVisible" title="产品档案详情" size="620px">
+      <el-descriptions v-if="detail" :column="2" border>
+        <el-descriptions-item label="产品编码">{{ detail.productCode }}</el-descriptions-item>
+        <el-descriptions-item label="产品名称">{{ detail.productName }}</el-descriptions-item>
+        <el-descriptions-item label="产品型号">{{ detail.productModel || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="生命周期">{{ zh(detail.lifecycleStatus) }}</el-descriptions-item>
+        <el-descriptions-item label="计量单位">{{ zh(detail.unitCode) }}</el-descriptions-item>
+        <el-descriptions-item label="单重（千克）">{{ detail.weightKg ?? '—' }}</el-descriptions-item>
+        <el-descriptions-item label="上市日期">{{ detail.launchDate || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="停产日期">{{ detail.eolDate || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="记录状态">{{ mdmStatus(detail.status) }}</el-descriptions-item>
+        <el-descriptions-item label="版本">{{ detail.versionNo }}</el-descriptions-item>
+        <el-descriptions-item label="变更原因" :span="2">{{ detail.changeReason || '—' }}</el-descriptions-item>
+      </el-descriptions>
+    </el-drawer>
+  </section>
+</template>
+
+<style scoped>
+.product-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.page-head span{color:#3472d2;font-size:11px;font-weight:750;letter-spacing:1px}.page-head h1{margin:7px 0;color:#203b5b;font-size:27px}.page-head p{margin:0;color:#8291a4;font-size:13px}.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:15px}.toolbar-note{margin-right:auto;color:#8392a6;font-size:12px}.toolbar .el-input{width:280px}.toolbar .el-select{width:165px}
+</style>

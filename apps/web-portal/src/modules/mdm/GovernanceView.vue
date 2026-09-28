@@ -1,1 +1,72 @@
-<script setup lang="ts">import{onMounted,reactive,ref,watch}from'vue';import{ElMessage}from'element-plus';import http from'../../api/http';import TablePager from'../../shared/components/TablePager.vue';const tab=ref('merges'),rows=ref<any[]>([]),page=ref(1),size=ref(20),total=ref(0),dialog=ref(false),form=reactive({entityType:'CUSTOMER',survivorId:null as number|null,mergedId:null as number|null,reason:''});async function load(){const{data}=await http.get(`/mdm/governance/${tab.value}`,{params:{page:page.value,size:size.value}});rows.value=data.data.content;total.value=data.data.totalElements}async function merge(){await http.post('/mdm/merge',form);ElMessage.success('合并完成，旧编码映射已保留');dialog.value=false;tab.value='merges';await load()}watch(tab,()=>{page.value=1;load()});onMounted(load)</script><template><section class="page"><div class="head"><div><span>数据治理</span><h1>主数据治理</h1><p>主数据合并、旧编码映射与变更历史。</p></div><el-button type="primary" @click="dialog=true">发起合并</el-button></div><el-card shadow="never"><el-tabs v-model="tab"><el-tab-pane label="合并记录" name="merges"/><el-tab-pane label="编码映射" name="mappings"/><el-tab-pane label="变更历史" name="history"/></el-tabs><el-table :data="rows" stripe><el-table-column v-for="k in Object.keys(rows[0]||{})" :key="k" :label="$zhKey(k)" min-width="130" show-overflow-tooltip><template #default="{row}">{{$zh(row[k])}}</template></el-table-column></el-table><TablePager v-model:page="page" v-model:size="size" :total="total" @change="load"/></el-card><el-dialog v-model="dialog" title="合并主数据" width="560px"><el-form label-position="top"><el-form-item label="类型"><el-select v-model="form.entityType"><el-option v-for="x in ['CUSTOMER','SUPPLIER','MATERIAL']" :key="x" :label="$zh(x)" :value="x"/></el-select></el-form-item><el-form-item label="保留记录编号"><el-input-number v-model="form.survivorId"/></el-form-item><el-form-item label="被合并记录编号"><el-input-number v-model="form.mergedId"/></el-form-item><el-form-item label="原因"><el-input v-model="form.reason" type="textarea"/></el-form-item></el-form><template #footer><el-button type="primary" @click="merge">确认合并</el-button></template></el-dialog></section></template><style scoped>.page{max-width:1480px;margin:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:17px}.head h1{margin:6px 0}.head span{color:#3775d6;font-size:10px}.head p{color:#8291a4;font-size:12px}</style>
+<script setup lang="ts">
+import { onMounted, ref, watch } from 'vue'
+import http from '../../api/http'
+import TablePager from '../../shared/components/TablePager.vue'
+import { zh, zhKey } from '../../shared/display'
+
+const tabs = [
+  { label: '合并记录', key: 'merges' },
+  { label: '编码映射', key: 'mappings' },
+  { label: '变更历史', key: 'history' }
+]
+const tab = ref('merges')
+const rows = ref<any[]>([])
+const loading = ref(false)
+const page = ref(1)
+const size = ref(20)
+const total = ref(0)
+
+function mdmStatus(value: unknown) {
+  return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
+}
+
+function display(value: unknown, key: string): string {
+  if (key === 'status') return mdmStatus(value)
+  if ((key === 'before_json' || key === 'after_json') && typeof value === 'string') {
+    try { return display(JSON.parse(value), key) } catch { return value }
+  }
+  if (Array.isArray(value)) return value.map(item => display(item, key)).join('、')
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([name, item]) => `${zhKey(name)}：${display(item, name)}`).join('；')
+  }
+  return String(zh(value))
+}
+
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get(`/mdm/governance/${tab.value}`, { params: { page: page.value, size: size.value } })
+    rows.value = data.data?.content || []
+    total.value = data.data?.totalElements || 0
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(tab, () => { page.value = 1; load() })
+onMounted(load)
+</script>
+
+<template>
+  <section class="governance-page">
+    <header class="page-head">
+      <div><span>数据治理 · 只读追溯</span><h1>主数据治理记录</h1><p>查询历史合并、旧编码映射与主数据变更痕迹。</p></div>
+      <el-tag type="info" effect="light" round>只读模式</el-tag>
+    </header>
+    <el-card shadow="never">
+      <el-tabs v-model="tab">
+        <el-tab-pane v-for="item in tabs" :key="item.key" :label="item.label" :name="item.key" />
+      </el-tabs>
+      <el-table :data="rows" v-loading="loading" stripe empty-text="暂无治理记录">
+        <el-table-column v-for="key in Object.keys(rows[0] || {})" :key="key" :label="zhKey(key)" min-width="140" show-overflow-tooltip>
+          <template #default="{row}">{{ display(row[key], key) }}</template>
+        </el-table-column>
+      </el-table>
+      <TablePager v-model:page="page" v-model:size="size" :total="total" :disabled="loading" @change="load" />
+    </el-card>
+  </section>
+</template>
+
+<style scoped>
+.governance-page{max-width:1480px;margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.page-head span{color:#3472d2;font-size:11px;font-weight:750;letter-spacing:1px}.page-head h1{margin:7px 0;color:#203b5b;font-size:27px}.page-head p{margin:0;color:#8291a4;font-size:13px}
+</style>

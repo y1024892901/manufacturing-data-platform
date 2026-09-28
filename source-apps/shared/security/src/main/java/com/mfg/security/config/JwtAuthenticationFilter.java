@@ -4,6 +4,7 @@ import com.mfg.security.entity.SysUser;
 import com.mfg.security.jwt.JwtTokenProvider;
 import com.mfg.security.principal.LoginUser;
 import com.mfg.security.repo.SysUserRepository;
+import com.mfg.security.repo.SysPermissionRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -40,6 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final SysUserRepository userRepository;
+    private final SysPermissionRepository permissionRepository;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -74,6 +76,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 权限点 → Spring Security 的 authority，供 @PreAuthorize 使用
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         principal.getPermissions().forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+        // ADMIN 是平台级管理员；hasAuthority() 不会自动调用 LoginUser.hasPermission() 的管理员兜底。
+        // 因此将权限字典中的全部有效权限码加入当前认证，令后续角色/权限配置即时生效。
+        if (principal.isAdmin()) {
+            permissionRepository.findAllByOrderBySystemCodeAscSortNoAsc().stream()
+                    .map(permission -> permission.getPermCode())
+                    .map(SimpleGrantedAuthority::new)
+                    .forEach(authorities::add);
+        }
         // 角色加 ROLE_ 前缀，供 hasRole() 使用
         principal.getRoleCodes().forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
         // 系统访问权独立于业务权限，URL 层先拦住无权进入的系统。

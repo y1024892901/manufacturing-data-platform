@@ -62,7 +62,8 @@ public class WorkflowQueryService {
     public Page<PendingTaskView> myPending(int page, int size) {
         var current = com.mfg.security.config.CurrentUser.get();
         var pageable = PageRequest.of(safePage(page), safeSize(size));
-        Page<WfTask> tasks = taskRepo.findMyPendingPaged(current.getRoleCodes(), current.getUsername(), pageable);
+        Page<WfTask> tasks = taskRepo.findMyPendingPagedExcludingBizTypes(
+                current.getRoleCodes(), current.getUsername(), ApprovalEngine.READ_ONLY_MDM_BIZ_TYPES, pageable);
         Map<Long, WfInstance> instances = instanceRepo
                 .findAllById(tasks.getContent().stream().map(WfTask::getInstanceId).distinct().toList())
                 .stream().collect(Collectors.toMap(WfInstance::getId, item -> item));

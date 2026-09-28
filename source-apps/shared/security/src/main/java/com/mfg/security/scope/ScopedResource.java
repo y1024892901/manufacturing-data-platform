@@ -7,6 +7,8 @@ public enum ScopedResource {
     OPPORTUNITY("src_crm.crm_opportunity","owner_user","dept_code","opportunity_no","opportunity_name","stage_code"),
     SALES_ORDER("src_erp.erp_sales_order","sales_user","dept_code","sales_order_no","customer_name","order_status"),
     WORK_ORDER("src_mes.mes_work_order","workshop_user","workshop_code","work_order_no","product_code","wo_status"),
+    WORK_REPORT("src_mes.mes_work_report","operator_code",null,"report_no","work_order_no",null),
+    ANDON_EVENT("src_mes.mes_andon_event","reported_by","workshop_code","event_no","description","event_status"),
     EQUIPMENT("src_eam.eam_equipment",null,"workshop_code","equipment_code","equipment_name","equipment_status"),
     INSPECTION("src_qms.qms_inspection","inspector_code","workshop_code","inspection_no","material_code","inspect_result"),
     PURCHASE_ORDER("src_srm.srm_purchase_order","purchase_user",null,"purchase_order_no","supplier_code","order_status");

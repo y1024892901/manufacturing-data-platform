@@ -22,5 +22,12 @@ public class ReworkOrder {
     @Column(name = "rework_status") private String status = "PENDING";
     @Column(name = "start_time") private LocalDateTime startTime;
     @Column(name = "end_time") private LocalDateTime endTime;
+    @Column(name = "owner_user") private String ownerUser;
+    @Column(name = "rework_method") private String reworkMethod;
+    @Column(name = "verification_result") private String verificationResult;
+    @Column(name = "qualified_qty") private BigDecimal qualifiedQty;
+    @Column(name = "scrap_qty") private BigDecimal scrapQty;
+    @Column(name = "rework_remark") private String remark;
     @Column(name = "created_at") private LocalDateTime createdAt;
+    @Column(name = "updated_at") private LocalDateTime updatedAt;
 }

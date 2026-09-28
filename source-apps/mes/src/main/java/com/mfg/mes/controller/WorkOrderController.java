@@ -1,5 +1,67 @@
 package com.mfg.mes.controller;
-import com.mfg.security.scope.ScopedQueryService;
-import com.mfg.security.scope.ScopedResource;import com.mfg.common.api.*;import com.mfg.common.exception.BizException;import com.mfg.mes.entity.WorkOrder;import com.mfg.mes.repo.WorkOrderRepository;import lombok.RequiredArgsConstructor;import org.springframework.data.domain.*;import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.web.bind.annotation.*;import java.math.*;import java.time.*;
-/** MES 只执行 ERP 下达需求：工单开工、报工、完工，数量不得超计划。 */
-@RestController @RequestMapping("/api/mes/work-orders") @RequiredArgsConstructor public class WorkOrderController{private final ScopedQueryService scope;private final WorkOrderRepository repo;@GetMapping @PreAuthorize("hasAuthority('MES:WORK_ORDER:VIEW')") public ApiResponse<Page<WorkOrder>> page(@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){return ApiResponse.ok(scope.page(ScopedResource.WORK_ORDER,WorkOrder.class,page,size,null,null));}@PostMapping @PreAuthorize("hasAuthority('MES:WORK_ORDER:CREATE')") public ApiResponse<WorkOrder> create(@RequestBody WorkOrder w){w.setWorkshopUser(com.mfg.security.config.CurrentUser.usernameOrSystem());w.setStatus("CREATED");w.setCompletedQty(BigDecimal.ZERO);w.setQualifiedQty(BigDecimal.ZERO);w.setScrapQty(BigDecimal.ZERO);return ApiResponse.ok(repo.save(w));}@PostMapping("/{id}/start")@PreAuthorize("hasAuthority('MES:WORK_ORDER:START')")public ApiResponse<WorkOrder> start(@PathVariable Long id){scope.requireVisible(ScopedResource.WORK_ORDER,id);WorkOrder w=load(id);if(!"CREATED".equals(w.getStatus())&&!"RELEASED".equals(w.getStatus()))throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"工单当前不能开工");w.setStatus("STARTED");w.setActualStartTime(LocalDateTime.now());return ApiResponse.ok(repo.save(w));}@PostMapping("/{id}/report")@PreAuthorize("hasAuthority('MES:WORK_REPORT:CREATE')")public ApiResponse<WorkOrder> report(@PathVariable Long id,@RequestParam BigDecimal qualifiedQty,@RequestParam(defaultValue="0")BigDecimal scrapQty){scope.requireVisible(ScopedResource.WORK_ORDER,id);WorkOrder w=load(id);if(!"STARTED".equals(w.getStatus()))throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"只有开工工单可报工");BigDecimal add=qualifiedQty.add(scrapQty);if(w.getCompletedQty().add(add).compareTo(w.getPlanQty())>0)throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"累计报工数量不能超过计划数量");w.setCompletedQty(w.getCompletedQty().add(add));w.setQualifiedQty(w.getQualifiedQty().add(qualifiedQty));w.setScrapQty(w.getScrapQty().add(scrapQty));if(w.getCompletedQty().compareTo(w.getPlanQty())==0){w.setStatus("COMPLETED");w.setActualEndTime(LocalDateTime.now());}return ApiResponse.ok(repo.save(w));}private WorkOrder load(Long id){return repo.findById(id).orElseThrow(()->BizException.notFound("MES工单",id));}}
+
+import com.mfg.common.api.ApiResponse;
+import com.mfg.mes.entity.WorkOrder;
+import com.mfg.mes.service.WorkOrderService;
+import com.mfg.mes.service.WorkReportService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import java.math.BigDecimal;
+
+@RestController
+@RequestMapping("/api/mes/work-orders")
+@RequiredArgsConstructor
+public class WorkOrderController {
+    private final WorkOrderService workOrders;
+    private final WorkReportService workReports;
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:VIEW')")
+    public ApiResponse<Page<WorkOrder>> page(@RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(workOrders.page(page, size));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:VIEW')")
+    public ApiResponse<WorkOrder> get(@PathVariable Long id) {
+        return ApiResponse.ok(workOrders.get(id));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:CREATE')")
+    public ApiResponse<WorkOrder> create(@RequestBody WorkOrder input) {
+        return ApiResponse.ok(workOrders.create(input));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:UPDATE')")
+    public ApiResponse<WorkOrder> update(@PathVariable Long id, @RequestBody WorkOrder input) {
+        return ApiResponse.ok(workOrders.update(id, input));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:DELETE')")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        workOrders.delete(id);
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/{id}/start")
+    @PreAuthorize("hasAuthority('MES:WORK_ORDER:START')")
+    public ApiResponse<WorkOrder> start(@PathVariable Long id) {
+        return ApiResponse.ok(workOrders.start(id));
+    }
+
+    /** 兼容工单列表的快捷报工入口，但所有产量仍写入报工明细，再统一汇总。 */
+    @PostMapping("/{id}/report")
+    @PreAuthorize("hasAuthority('MES:WORK_REPORT:CREATE')")
+    public ApiResponse<WorkOrder> report(@PathVariable Long id,
+                                         @RequestParam BigDecimal qualifiedQty,
+                                         @RequestParam(defaultValue = "0") BigDecimal scrapQty) {
+        workReports.createFromWorkOrder(id, qualifiedQty, scrapQty);
+        return ApiResponse.ok(workOrders.get(id));
+    }
+}

@@ -75,7 +75,9 @@
 | **V40.2** | 00 横向地基 · F3 主数据停用权限 | ✅ 已应用 `V40_2__p0_masterdata_terminal_permissions` |
 | V41–V46 | 02 MDM + PLM 收口 | 待用 |
 | V47–V52 | 03 QMS + WMS 收口 | 待用 |
-| V53–V58 | 04 ERP + CRM 收口 | 待用 |
+| V53 | 04 ERP + CRM 收口 | 已编写 `V53__p4_crm_optional_fields.sql`（未应用） |
+| V54 | 04 ERP + CRM 收口 | 已编写 `V54__p4_crm_crud_permissions.sql`（未应用） |
+| V55–V58 | 04 ERP + CRM 收口 | 待用 |
 | V59–V64 | 05 SRM + EAM 收口 | 待用 |
 | V65–V72 | 06 MES（从零建，预留较多） | 待用 |
 | V73–V80 | 07 能源管理（从零建，预留较多） | 待用 |
