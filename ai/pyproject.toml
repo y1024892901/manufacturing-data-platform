@@ -1,0 +1,17 @@
+[project]
+name = "mfg-ai-mcp"
+version = "0.1.0"
+description = "Natural-language read-only queries over manufacturing system databases using MCP and Qwen/DeepSeek."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "mcp>=2.0,<3",
+  "openai>=2.0,<3",
+  "PyMySQL>=1.1,<2",
+  "python-dotenv>=1,<2",
+  "sqlglot>=26,<31",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[tool.uv]
+package = false

@@ -19,6 +19,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/portal' },
   { path: '/portal', component: PortalLayout, children: [
     { path: '', component: () => import('../modules/platform/PortalHome.vue') },
+    { path: 'ai', component: () => import('../modules/platform/AiQueryView.vue') },
     { path: 'users', component: () => import('../modules/platform/UserAdminView.vue'), meta: { admin: true } },
     { path: 'roles', component: () => import('../modules/platform/ReferenceAdminView.vue'), props: { kind: 'roles' }, meta: { admin: true } },
     { path: 'organization', component: () => import('../modules/platform/ReferenceAdminView.vue'), props: { kind: 'organization' }, meta: { admin: true } },

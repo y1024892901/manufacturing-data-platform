@@ -35,7 +35,7 @@ manufacturing-data-platform/
 └── docs/                  范围、技术基线和功能目录
 ```
 
-尚未实施的目录（`ai/`、`models/`、`orchestration/`、`transforms/`、`ingestion/`、`source-data/`、`tests/` 等）是 P6/P7 阶段的骨架，其 README 顶部统一标有 `状态：未实现`。已废弃的历史方案目录标有 `状态：已废弃`。两者的内部设计稿均已移除，如需查阅可回溯提交 `6cbe906`。
+`ai/` 已实现本地 AI/MCP 问数基础版：支持千问或 DeepSeek 探索并只读查询十个源系统库；用户级权限控制、数仓同步、跨系统关联仍属于后续范围。`models/`、`orchestration/`、`transforms/`、`ingestion/`、`source-data/` 等目录仍为 P6/P7 骨架。已废弃的历史方案目录标有 `状态：已废弃`。两者的内部设计稿均已移除，如需查阅可回溯提交 `6cbe906`。
 
 ## 文档约定
 
