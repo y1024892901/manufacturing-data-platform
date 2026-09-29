@@ -2,6 +2,7 @@ package com.mfg.mes.service;
 
 import com.mfg.common.api.ErrorCode;
 import com.mfg.common.exception.BizException;
+import com.mfg.mes.entity.ProdResult;
 import com.mfg.mes.entity.WorkOrder;
 import com.mfg.mes.entity.WorkReport;
 import com.mfg.mes.repo.WorkOrderRepository;
@@ -25,6 +26,7 @@ public class WorkReportService {
     private final WorkReportRepository reports;
     private final WorkOrderRepository workOrders;
     private final ScopedQueryService scope;
+    private final ProdResultService prodResults;
 
     @Transactional(readOnly = true)
     public Page<WorkReport> page(int page, int size) {
@@ -39,8 +41,11 @@ public class WorkReportService {
 
     @Transactional
     public WorkReport create(WorkReport input) {
-        validateReportNo(input);
+        if (input == null) throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "报工单内容不能为空");
         WorkOrder order = lockOrder(input.getWorkOrderNo());
+        ProdResult lockedResult = prodResults.lockForOrder(order);
+        scope.requireVisible(ScopedResource.WORK_ORDER, order.getId());
+        validateReportNo(input);
         if (!"STARTED".equals(order.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有已开工工单可以登记新报工");
         }
@@ -52,15 +57,17 @@ public class WorkReportService {
         input.setUpdatedBy(input.getCreatedBy());
         input.setUpdatedAt(input.getCreatedAt());
         WorkReport saved = reports.saveAndFlush(input);
-        synchronizeOrder(order);
+        synchronizeOrder(order, lockedResult);
         return saved;
     }
 
     @Transactional
     public WorkReport update(Long id, WorkReport input) {
-        scope.requireVisible(ScopedResource.WORK_REPORT, id);
-        WorkReport current = reports.findById(id).orElseThrow(() -> BizException.notFound("MES报工单", id));
+        WorkReport current = reports.findByIdForUpdate(id).orElseThrow(() -> BizException.notFound("MES报工单", id));
         WorkOrder order = lockOrder(current.getWorkOrderNo());
+        ProdResult lockedResult = prodResults.lockForOrder(order);
+        scope.requireVisible(ScopedResource.WORK_REPORT, id);
+        scope.requireVisible(ScopedResource.WORK_ORDER, order.getId());
         if (!"STARTED".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "当前工单状态不能修改报工");
         }
@@ -88,28 +95,30 @@ public class WorkReportService {
         current.setUpdatedBy(CurrentUser.usernameOrSystem());
         current.setUpdatedAt(LocalDateTime.now());
         WorkReport saved = reports.saveAndFlush(current);
-        synchronizeOrder(order);
+        synchronizeOrder(order, lockedResult);
         return saved;
     }
 
     @Transactional
     public void delete(Long id) {
-        scope.requireVisible(ScopedResource.WORK_REPORT, id);
-        WorkReport current = reports.findById(id).orElseThrow(() -> BizException.notFound("MES报工单", id));
+        WorkReport current = reports.findByIdForUpdate(id).orElseThrow(() -> BizException.notFound("MES报工单", id));
         WorkOrder order = lockOrder(current.getWorkOrderNo());
+        ProdResult lockedResult = prodResults.lockForOrder(order);
+        scope.requireVisible(ScopedResource.WORK_REPORT, id);
+        scope.requireVisible(ScopedResource.WORK_ORDER, order.getId());
         if (!"STARTED".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "当前工单状态不能删除报工");
         }
-        scope.requireVisible(ScopedResource.WORK_ORDER, order.getId());
         reports.delete(current);
         reports.flush();
-        synchronizeOrder(order);
+        synchronizeOrder(order, lockedResult);
     }
 
     @Transactional
     public WorkReport createFromWorkOrder(Long workOrderId, BigDecimal qualifiedQty, BigDecimal scrapQty) {
         WorkOrder order = workOrders.findByIdForUpdate(workOrderId)
                 .orElseThrow(() -> BizException.notFound("MES工单", workOrderId));
+        prodResults.lockForOrder(order);
         scope.requireVisible(ScopedResource.WORK_ORDER, workOrderId);
         WorkReport report = new WorkReport();
         report.setReportNo("BG" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
@@ -122,10 +131,8 @@ public class WorkReportService {
 
     private WorkOrder lockOrder(String workOrderNo) {
         String key = required(workOrderNo, "MES工单号");
-        WorkOrder order = workOrders.findByWorkOrderNoForUpdate(key)
+        return workOrders.findByWorkOrderNoForUpdate(key)
                 .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "MES工单不存在"));
-        scope.requireVisible(ScopedResource.WORK_ORDER, order.getId());
-        return order;
     }
 
     private void normalizeFromOrder(WorkReport report, WorkOrder order, boolean creating) {
@@ -169,7 +176,7 @@ public class WorkReportService {
         }
     }
 
-    private void synchronizeOrder(WorkOrder order) {
+    private void synchronizeOrder(WorkOrder order, ProdResult lockedResult) {
         var details = reports.findAllByWorkOrderNo(order.getWorkOrderNo());
         BigDecimal completed = details.stream().map(WorkReport::getReportQty)
                 .filter(v -> v != null).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -192,6 +199,7 @@ public class WorkReportService {
         }
         order.setUpdatedAt(LocalDateTime.now());
         workOrders.save(order);
+        prodResults.synchronizeLocked(order.getProdOrderNo(), lockedResult);
     }
 
     private void validateReportNo(WorkReport input) {

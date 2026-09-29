@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,6 +43,7 @@ public class MaterialController {
     private final MaterialRepository repo;
     private final MasterDataService masterDataService;
     private final MasterDataDistributor distributor;
+    private final JdbcTemplate jdbc;
 
     // ---------- 查询 ----------
 
@@ -128,6 +130,7 @@ public class MaterialController {
     @PostMapping
     @PreAuthorize("hasAuthority('MDM:MATERIAL:CREATE')")
     public ApiResponse<Material> create(@RequestBody Material material) {
+        validateReferences(material);
         if (repo.existsByMaterialCode(material.getMaterialCode())) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS,
                     "物料编码已存在：" + material.getMaterialCode());
@@ -142,6 +145,7 @@ public class MaterialController {
     public ApiResponse<Material> update(@PathVariable Long id,
                                         @RequestBody Material input,
                                         @RequestParam(required = false) String changeReason) {
+        validateReferences(input);
         Material existing = repo.findById(id)
                 .orElseThrow(() -> BizException.notFound("物料", id));
 
@@ -210,5 +214,40 @@ public class MaterialController {
     @PreAuthorize("hasAuthority('MDM:MATERIAL:DISABLE')")
     public ApiResponse<Material> disable(@PathVariable Long id) {
         return ApiResponse.ok(terminalService.disable(Material.class, id));
+    }
+
+    private void validateReferences(Material material) {
+        if (material.getMaterialCode() == null || material.getMaterialCode().isBlank()
+                || material.getMaterialName() == null || material.getMaterialName().isBlank()
+                || material.getMaterialType() == null || material.getMaterialType().isBlank()) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, "物料编码、物料名称和物料类型不能为空");
+        }
+        requireActiveUnit(material.getBaseUnitCode(), "基本单位");
+        if (material.getPurchaseUnitCode() != null && !material.getPurchaseUnitCode().isBlank()) {
+            requireActiveUnit(material.getPurchaseUnitCode(), "采购单位");
+        }
+        if (material.getCategoryId() != null) {
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM src_mdm.md_material_category WHERE id=? AND status='PUBLISHED' AND is_leaf=1",
+                    Integer.class, material.getCategoryId());
+            if (count == null || count == 0) {
+                throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "物料分类不存在、未发布或不是末级分类");
+            }
+        }
+        if (material.getConversionRate() == null || material.getConversionRate().signum() <= 0) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, "采购单位换算率必须大于0");
+        }
+    }
+
+    private void requireActiveUnit(String unitCode, String label) {
+        if (unitCode == null || unitCode.isBlank()) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, label + "不能为空");
+        }
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_mdm.md_unit WHERE unit_code=? AND status='PUBLISHED'",
+                Integer.class, unitCode.trim());
+        if (count == null || count == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, label + "不存在或已停用：" + unitCode);
+        }
     }
 }

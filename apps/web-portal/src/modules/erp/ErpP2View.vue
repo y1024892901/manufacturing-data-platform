@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
 import { zh } from '../../shared/display'
+import { loadMdmMaterials, loadMdmUnits, type MdmMaterialOption, type MdmUnitOption } from '../../shared/mdmOptions'
 
 type Option = { label: string; value: string | number }
 type Field = {
@@ -11,6 +12,8 @@ type Field = {
   label: string
   type?: 'text' | 'number' | 'date' | 'select' | 'textarea'
   required?: boolean
+  readonly?: boolean
+  placeholder?: string
   min?: number
   max?: number
   options?: Option[]
@@ -56,7 +59,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'order_status', label: '订单状态' },
     ],
     fields: [
-      { key: 'salesOrderNo', label: '销售订单号', required: true }, { key: 'customerCode', label: '客户编码', required: true },
+      { key: 'salesOrderNo', label: '销售订单号', readonly: true, placeholder: '留空则自动生成' }, { key: 'customerCode', label: '客户编码', required: true },
       { key: 'deliveryDate', label: '要求交期', type: 'date', required: true },
       { key: 'customerReference', label: '客户采购参考号' }, { key: 'paymentTerms', label: '付款条件' },
       { key: 'shippingTerms', label: '交付条件' }, { key: 'shipToAddress', label: '收货地址', type: 'textarea' },
@@ -94,7 +97,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'status', label: '运行状态' }, { key: 'remark', label: '运行备注' },
     ],
     fields: [
-      { key: 'runNo', label: '计划运行编号', required: true }, { key: 'salesOrderNo', label: '销售订单号', required: true },
+      { key: 'runNo', label: '计划运行编号', readonly: true, placeholder: '留空则自动生成' }, { key: 'salesOrderNo', label: '销售订单号', required: true },
       { key: 'factoryCode', label: '工厂', required: true }, { key: 'planDate', label: '计划日期', type: 'date', required: true },
       { key: 'planner', label: '计划员' }, { key: 'remark', label: '运行备注', type: 'textarea' },
     ],
@@ -126,7 +129,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'factory_code', label: '工厂' }, { key: 'order_status', label: '订单状态' }, { key: 'kit_status', label: '齐套状态' },
     ],
     fields: [
-      { key: 'prodOrderNo', label: '生产订单号', required: true }, { key: 'salesOrderNo', label: '来源销售订单号' },
+      { key: 'prodOrderNo', label: '生产订单号', readonly: true, placeholder: '留空则自动生成' }, { key: 'salesOrderNo', label: '来源销售订单号' },
       { key: 'productCode', label: '产品物料编码', required: true }, { key: 'planQty', label: '计划数量', type: 'number', min: 0.0001, required: true },
       { key: 'unitCode', label: '计量单位', required: true }, { key: 'planStartDate', label: '计划开工日期', type: 'date', required: true },
       { key: 'planFinishDate', label: '计划完工日期', type: 'date', required: true },
@@ -149,7 +152,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'settle_status', label: '核销状态' }, { key: 'source_type', label: '来源类型' },
     ],
     fields: [
-      { key: 'receivableNo', label: '应收单号', required: true }, { key: 'customerCode', label: '客户编码', required: true },
+      { key: 'receivableNo', label: '应收单号', readonly: true, placeholder: '留空则自动生成' }, { key: 'customerCode', label: '客户编码', required: true },
       { key: 'salesOrderNo', label: '销售订单号' }, { key: 'amount', label: '应收金额', type: 'number', min: 0.01, required: true },
       { key: 'invoiceDate', label: '业务日期', type: 'date' }, { key: 'dueDate', label: '到期日', type: 'date' },
       { key: 'paymentTerms', label: '付款条件' }, { key: 'customerReference', label: '客户采购参考号' },
@@ -166,7 +169,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'tax_amount', label: '税额' }, { key: 'payment_terms', label: '付款条件' }, { key: 'status', label: '发票状态' },
     ],
     fields: [
-      { key: 'invoiceNo', label: '发票号', required: true }, { key: 'salesOrderNo', label: '销售订单号', required: true },
+      { key: 'invoiceNo', label: '发票号', readonly: true, placeholder: '留空则自动生成' }, { key: 'salesOrderNo', label: '销售订单号', required: true },
       { key: 'amount', label: '开票金额', type: 'number', min: 0.01, required: true },
       { key: 'taxAmount', label: '税额', type: 'number', min: 0 },
       { key: 'invoiceDate', label: '开票日期', type: 'date', required: true }, { key: 'dueDate', label: '应收到期日', type: 'date' },
@@ -184,7 +187,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'payment_method', label: '付款方式' }, { key: 'deposit_account', label: '入账账户' }, { key: 'status', label: '回款状态' },
     ],
     fields: [
-      { key: 'receiptNo', label: '回款单号', required: true }, { key: 'customerCode', label: '客户编码', required: true },
+      { key: 'receiptNo', label: '回款单号', readonly: true, placeholder: '留空则自动生成' }, { key: 'customerCode', label: '客户编码', required: true },
       { key: 'amount', label: '回款金额', type: 'number', min: 0.01, required: true },
       { key: 'receiptDate', label: '回款日期', type: 'date', required: true }, { key: 'bankReference', label: '银行流水号' },
       { key: 'paymentMethod', label: '付款方式', type: 'select', options: [{ label: '银行转账', value: 'BANK_TRANSFER' }, { label: '现金', value: 'CASH' }, { label: '支票', value: 'CHECK' }, { label: '其他', value: 'OTHER' }] },
@@ -203,7 +206,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'due_date', label: '到期日' }, { key: 'status', label: '应付状态' },
     ],
     fields: [
-      { key: 'payableNo', label: '应付单号', required: true }, { key: 'supplierCode', label: '供应商编码', required: true },
+      { key: 'payableNo', label: '应付单号', readonly: true, placeholder: '留空则自动生成' }, { key: 'supplierCode', label: '供应商编码', required: true },
       { key: 'sourceOrderNo', label: '采购来源单号' }, { key: 'amount', label: '应付金额', type: 'number', min: 0.01, required: true },
       { key: 'supplierInvoiceNo', label: '供应商发票号' }, { key: 'invoiceDate', label: '发票日期', type: 'date' },
       { key: 'invoiceReceivedDate', label: '收票日期', type: 'date' }, { key: 'dueDate', label: '付款到期日', type: 'date' },
@@ -223,7 +226,7 @@ const configs: Record<string, PageConfig> = {
       { key: 'summary', label: '凭证摘要' }, { key: 'voucher_status', label: '凭证状态' },
     ],
     fields: [
-      { key: 'voucherNo', label: '凭证号', required: true }, { key: 'companyCode', label: '公司代码', required: true },
+      { key: 'voucherNo', label: '凭证号', readonly: true, placeholder: '留空则自动生成' }, { key: 'companyCode', label: '公司代码', required: true },
       { key: 'fiscalPeriod', label: '会计期间（YYYY-MM）', required: true },
       { key: 'voucherDate', label: '凭证日期', type: 'date', required: true },
       { key: 'debitAmount', label: '借方金额', type: 'number', min: 0, required: true },
@@ -252,8 +255,12 @@ const detail = ref<Record<string, any> | null>(null)
 const form = reactive<Record<string, any>>({})
 const pageError = ref('')
 const formError = ref('')
+const mdmMaterials = ref<MdmMaterialOption[]>([])
+const mdmUnits = ref<MdmUnitOption[]>([])
+const masterDataLoading = ref(false)
 
 const message = (error: unknown, fallback: string) => error instanceof Error && error.message ? error.message : fallback
+const unitLabel = (value: unknown) => mdmUnits.value.find(item => item.value === String(value ?? ''))?.label || zh(value)
 const rowValue = (row: Record<string, any>, key: string) => {
   if (row[key] !== undefined) return row[key]
   const camel = key.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase())
@@ -265,6 +272,7 @@ const camelize = (source: Record<string, any> = {}) => Object.fromEntries(
 const recordStatus = (row: Record<string, any>) => rowValue(row, 'voucher_status') || rowValue(row, 'order_status') || rowValue(row, 'settle_status') || rowValue(row, 'status')
 function displayValue(value: unknown, key = '') {
   if (value == null || value === '') return '—'
+  if (key === 'unit_code' || key === 'unitCode') return unitLabel(value)
   const code = String(value).toUpperCase()
   if (key === 'source_type' || key === 'sourceType') {
     if (code === 'INVOICE') return '销售发票'
@@ -315,17 +323,52 @@ function clearForm() {
   for (const key of Object.keys(form)) delete form[key]
 }
 
+async function loadMasterDataOptions() {
+  const needMaterials = ['sales', 'production'].includes(props.kind)
+  const needUnits = ['sales', 'production', 'mrp'].includes(props.kind)
+  if (!needMaterials && !needUnits) return
+  masterDataLoading.value = true
+  try {
+    const [materials, units] = await Promise.all([
+      needMaterials ? loadMdmMaterials() : Promise.resolve(mdmMaterials.value),
+      needUnits ? loadMdmUnits() : Promise.resolve(mdmUnits.value),
+    ])
+    if (needMaterials) mdmMaterials.value = materials
+    if (needUnits) mdmUnits.value = units
+  } catch (error) {
+    pageError.value = message(error, '物料或计量单位主数据加载失败')
+  } finally { masterDataLoading.value = false }
+}
+
+function fieldOptions(field: Field) {
+  if (field.key === 'productCode') return mdmMaterials.value.map(item => ({ label: item.label, value: item.value }))
+  if (field.key === 'unitCode') return mdmUnits.value.map(item => ({ label: item.label, value: item.value }))
+  return field.options || []
+}
+
+function fieldChanged(field: Field) {
+  if (field.key !== 'productCode') return
+  const material = mdmMaterials.value.find(item => item.value === String(form.productCode || ''))
+  form.unitCode = material?.baseUnitCode || ''
+}
+
+function salesLineMaterialChanged(line: Record<string, any>) {
+  const material = mdmMaterials.value.find(item => item.value === String(line.materialCode || ''))
+  line.unitCode = material?.baseUnitCode || ''
+  if (material?.standardPrice != null && Number(line.unitPrice || 0) === 0) line.unitPrice = Number(material.standardPrice)
+}
+
 function initialValues() {
   const defaults = Object.fromEntries((config.value.fields || []).map(field => [field.key, null]))
   const generated = {
-    sales: { salesOrderNo: `SO-${Date.now()}`, deliveryDate: today, currency: 'CNY', taxRate: 13, sourceType: 'MANUAL', lines: [{ lineNo: 1, materialCode: '', orderQty: 1, unitPrice: 0, unitCode: 'PCS' }] },
-    mrp: { runNo: `MRP-${Date.now()}`, runType: 'ORDER', factoryCode: 'F001', planDate: today },
-    production: { prodOrderNo: `MO-${Date.now()}`, planQty: 1, unitCode: 'PCS', planStartDate: today, planFinishDate: today, priorityLevel: 'NORMAL' },
-    invoices: { invoiceNo: `INV-${Date.now()}`, amount: 0, taxAmount: 0, invoiceDate: today, dueDate: defaultDueDate, draft: true },
-    receipts: { receiptNo: `RC-${Date.now()}`, amount: 0, receiptDate: today, draft: true },
-    receivables: { receivableNo: `AR-${Date.now()}`, invoiceDate: today, dueDate: defaultDueDate },
-    payables: { payableNo: `AP-${Date.now()}`, amount: 0, invoiceDate: today, invoiceReceivedDate: today, dueDate: defaultDueDate },
-    vouchers: { voucherNo: `V-${Date.now()}`, companyCode: 'C001', fiscalPeriod: today.slice(0, 7), voucherDate: today, debitAmount: 0, creditAmount: 0 },
+    sales: { deliveryDate: today, currency: 'CNY', taxRate: 13, sourceType: 'MANUAL', lines: [{ lineNo: 1, materialCode: '', orderQty: 1, unitPrice: 0, unitCode: '' }] },
+    mrp: { runType: 'ORDER', factoryCode: 'F001', planDate: today },
+    production: { planQty: 1, planStartDate: today, planFinishDate: today, priorityLevel: 'NORMAL' },
+    invoices: { amount: 0, taxAmount: 0, invoiceDate: today, dueDate: defaultDueDate, draft: true },
+    receipts: { amount: 0, receiptDate: today, draft: true },
+    receivables: { invoiceDate: today, dueDate: defaultDueDate },
+    payables: { amount: 0, invoiceDate: today, invoiceReceivedDate: today, dueDate: defaultDueDate },
+    vouchers: { companyCode: 'C001', fiscalPeriod: today.slice(0, 7), voucherDate: today, debitAmount: 0, creditAmount: 0 },
     suggestions: { priorityLevel: 'NORMAL' },
   } as Record<string, Record<string, any>>
   return { ...defaults, ...(generated[props.kind] || {}) }
@@ -397,7 +440,7 @@ function payload() {
   if (props.kind === 'sales') {
     result.lines = (form.lines || []).map((line: Record<string, any>, index: number) => ({
       lineNo: Number(line.lineNo || index + 1), materialCode: line.materialCode, orderQty: Number(line.orderQty),
-      unitPrice: Number(line.unitPrice), unitCode: line.unitCode || 'PCS',
+      unitPrice: Number(line.unitPrice), unitCode: line.unitCode || null,
       customerMaterialCode: line.customerMaterialCode || null, remark: line.remark || null,
     }))
   }
@@ -531,7 +574,7 @@ async function settle(row: Record<string, any>) {
 }
 
 function addLine() {
-  form.lines.push({ lineNo: form.lines.length + 1, materialCode: '', orderQty: 1, unitPrice: 0, unitCode: 'PCS' })
+  form.lines.push({ lineNo: form.lines.length + 1, materialCode: '', orderQty: 1, unitPrice: 0, unitCode: '' })
 }
 
 function removeLine(index: number) {
@@ -545,8 +588,9 @@ watch(() => props.kind, () => {
   status.value = ''
   pageError.value = ''
   void load()
+  void loadMasterDataOptions()
 })
-onMounted(load)
+onMounted(() => { void load(); void loadMasterDataOptions() })
 </script>
 
 <template>
@@ -557,7 +601,7 @@ onMounted(load)
         <h1>{{ config.title }}</h1>
         <p>中文单据字段与状态展示；可维护记录按业务规则编辑或删除，过账或进入下游流程后会锁定。</p>
       </div>
-      <el-button v-if="config.canCreate" type="primary" @click="openCreate">新增{{ config.title }}</el-button>
+      <el-button v-if="config.canCreate" type="primary" :disabled="masterDataLoading" @click="openCreate">新增{{ config.title }}</el-button>
     </div>
 
     <el-alert v-if="pageError" class="page-error" type="error" :closable="true" show-icon :title="pageError" @close="pageError = ''" />
@@ -613,18 +657,22 @@ onMounted(load)
       <TablePager v-model:page="page" v-model:size="size" :total="total" @change="load" />
     </el-card>
 
-    <el-dialog v-model="dialog" :title="`${editingId ? '编辑' : '新增'}${config.title}`" :width="kind === 'sales' ? '850px' : '680px'" destroy-on-close>
+    <el-dialog v-model="dialog" :title="`${editingId ? '编辑' : '新增'}${config.title}`" width="860px" top="5vh" destroy-on-close>
       <el-alert v-if="formError" class="form-error" type="error" :closable="true" show-icon :title="formError" @close="formError = ''" />
       <el-form label-position="top" class="document-form">
-        <el-form-item v-for="field in config.fields || []" :key="field.key" :label="`${field.label}${field.required ? '' : '（选填）'}`" :required="field.required">
-          <el-select v-if="field.type === 'select'" v-model="form[field.key]" clearable :placeholder="`请选择${field.label}`">
-            <el-option v-for="option in field.options || []" :key="String(option.value)" :label="option.label" :value="option.value" />
-          </el-select>
-          <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" type="date" value-format="YYYY-MM-DD" :placeholder="`请选择${field.label}`" />
-          <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" :min="field.min ?? 0" :max="field.max" :precision="4" :controls="true" />
-          <el-input v-else-if="field.type === 'textarea'" v-model="form[field.key]" type="textarea" :rows="3" :placeholder="`请输入${field.label}`" />
-          <el-input v-else v-model="form[field.key]" :disabled="editingId !== null && ['salesOrderNo', 'prodOrderNo'].includes(field.key)" :placeholder="`请输入${field.label}`" />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col v-for="field in config.fields || []" :key="field.key" :span="field.type === 'textarea' ? 24 : 12">
+            <el-form-item :label="field.label" :required="field.required">
+              <el-select v-if="field.type === 'select' || field.key === 'productCode' || field.key === 'unitCode'" v-model="form[field.key]" :disabled="!!(editingId && field.readonly) || masterDataLoading" clearable filterable style="width:100%" :placeholder="field.placeholder || `请选择${field.label}`" @change="fieldChanged(field)">
+                <el-option v-for="option in fieldOptions(field)" :key="String(option.value)" :label="option.label" :value="option.value" />
+              </el-select>
+              <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" :disabled="!!(editingId && field.readonly)" type="date" value-format="YYYY-MM-DD" style="width:100%" :placeholder="field.placeholder || `请选择${field.label}`" />
+              <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" :disabled="!!(editingId && field.readonly)" :min="field.min ?? 0" :max="field.max" :precision="4" :controls="true" style="width:100%" />
+              <el-input v-else-if="field.type === 'textarea'" v-model="form[field.key]" :disabled="!!(editingId && field.readonly)" type="textarea" :rows="3" :placeholder="field.placeholder || `请输入${field.label}`" />
+              <el-input v-else v-model="form[field.key]" :disabled="!!(editingId && field.readonly)" :placeholder="field.placeholder || `请输入${field.label}`" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
 
       <div v-if="kind === 'sales'" class="lines-head">
@@ -633,17 +681,17 @@ onMounted(load)
       </div>
       <el-table v-if="kind === 'sales'" :data="form.lines || []" border size="small" class="lines-table">
         <el-table-column prop="lineNo" label="行号" width="70" />
-        <el-table-column label="物料编码" min-width="155"><template #default="{ row }"><el-input v-model="row.materialCode" placeholder="物料编码" /></template></el-table-column>
+        <el-table-column label="物料编码" min-width="220"><template #default="{ row }"><el-select v-model="row.materialCode" filterable placeholder="从统一主数据选择" @change="salesLineMaterialChanged(row)"><el-option v-for="item in mdmMaterials" :key="item.value" :label="item.label" :value="item.value" /></el-select></template></el-table-column>
         <el-table-column label="数量" width="130"><template #default="{ row }"><el-input-number v-model="row.orderQty" :min="0.0001" :precision="4" /></template></el-table-column>
         <el-table-column label="单价" width="130"><template #default="{ row }"><el-input-number v-model="row.unitPrice" :min="0" :precision="4" /></template></el-table-column>
-        <el-table-column label="单位" width="100"><template #default="{ row }"><el-input v-model="row.unitCode" /></template></el-table-column>
+        <el-table-column label="单位" width="150"><template #default="{ row }"><el-select v-model="row.unitCode" filterable placeholder="单位"><el-option v-for="item in mdmUnits" :key="item.value" :label="item.label" :value="item.value" /></el-select></template></el-table-column>
         <el-table-column label="客户物料号（选填）" min-width="150"><template #default="{ row }"><el-input v-model="row.customerMaterialCode" /></template></el-table-column>
         <el-table-column label="行备注（选填）" min-width="150"><template #default="{ row }"><el-input v-model="row.remark" /></template></el-table-column>
         <el-table-column label="操作" width="75"><template #default="{ $index }"><el-button link type="danger" @click="removeLine($index)">移除</el-button></template></el-table-column>
       </el-table>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="save">{{ kind === 'invoices' || kind === 'receipts' ? '保存草稿' : '保存' }}</el-button>
+        <el-button type="primary" :loading="saving" @click="save">{{ editingId ? '保存修改' : '创建草稿' }}</el-button>
       </template>
     </el-dialog>
 
@@ -658,7 +706,7 @@ onMounted(load)
           <el-table-column prop="materialCode" label="物料编码" />
           <el-table-column prop="materialName" label="物料名称" />
           <el-table-column prop="orderQty" label="订购数量" />
-          <el-table-column prop="unitCode" label="计量单位" />
+          <el-table-column prop="unitCode" label="计量单位"><template #default="{ row }">{{ unitLabel(row.unitCode) }}</template></el-table-column>
           <el-table-column prop="unitPrice" label="单价" />
           <el-table-column prop="customerMaterialCode" label="客户物料号" />
           <el-table-column prop="remark" label="行备注" />
@@ -669,5 +717,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page{max-width:1500px;margin:auto}.head{display:flex;align-items:end;justify-content:space-between;margin-bottom:16px}.head span{font-size:11px;color:#3976d5}.head h1{margin:5px 0;color:#263f5c}.head p{font-size:12px;color:#8391a4}.bar{display:flex;gap:8px;margin-bottom:14px}.bar .el-input{width:300px}.bar .el-select{width:180px}.page-error,.form-error{margin-bottom:14px}.document-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}.document-form :deep(.el-select),.document-form :deep(.el-date-editor){width:100%}.document-form :deep(.el-input-number){width:100%}.lines-head{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px}.lines-table{margin-bottom:12px}.detail-lines-title{margin:18px 0 8px;color:#263f5c}
+.page{max-width:1500px;margin:auto}.head{display:flex;align-items:end;justify-content:space-between;margin-bottom:16px}.head span{font-size:11px;color:#3976d5}.head h1{margin:5px 0;color:#263f5c}.head p{font-size:12px;color:#8391a4}.bar{display:flex;gap:8px;margin-bottom:14px}.bar .el-input{width:300px}.bar .el-select{width:180px}.page-error,.form-error{margin-bottom:14px}.document-form :deep(.el-form-item){margin-bottom:18px}.document-form :deep(.el-select),.document-form :deep(.el-date-editor){width:100%}.document-form :deep(.el-input-number){width:100%}.lines-head{display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px}.lines-table{margin-bottom:12px}.detail-lines-title{margin:18px 0 8px;color:#263f5c}
 </style>

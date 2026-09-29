@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import http from '../../api/http'
 import { showErrorDialog } from '../errorDialog'
 import { zh, zhKey, zhQms } from '../display'
+import { loadMdmMaterials, loadMdmUnits, type MdmMaterialOption, type MdmUnitOption } from '../mdmOptions'
 import TablePager from './TablePager.vue'
 import { p3Catalog, type P3Field } from '../p3Catalog'
 
@@ -39,6 +40,9 @@ const formTitle = computed(() => `${editingId.value ? '修改' : '新增'}${prop
 const onboardingOptions = ref<any[]>([])
 const rfqOptions = ref<any[]>([])
 const purchaseOrderOptions = ref<any[]>([])
+const mdmMaterials = ref<MdmMaterialOption[]>([])
+const mdmUnits = ref<MdmUnitOption[]>([])
+const sharedOptionsLoading = ref(false)
 
 function toSnake(value: string) { return value.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`) }
 function toCamel(value: string) { return value.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) }
@@ -132,6 +136,7 @@ async function loadCountLines(countId: number) {
 }
 
 function openNewCountLine() {
+  if (!mdmMaterials.value.length) { showErrorDialog('主数据中暂无已发布物料，请先维护并发布物料主数据'); return }
   countLineEditingId.value = null
   Object.keys(countLineForm).forEach(key => delete countLineForm[key])
   Object.assign(countLineForm, { materialCode: '', locationCode: '', batchNo: '', actualQty: null })
@@ -151,7 +156,7 @@ async function saveCountLine() {
       if (countLineForm.actualQty === null || countLineForm.actualQty === '' || Number(countLineForm.actualQty) < 0) { ElMessage.warning('实盘数量不能小于零'); return }
       await http.put(`/wms/counts/${detailData.value.id}/lines/${countLineEditingId.value}`, { actualQty: Number(countLineForm.actualQty) })
     } else {
-      if (!String(countLineForm.materialCode || '').trim()) { ElMessage.warning('请填写物料编码'); return }
+      if (!mdmMaterials.value.some(item => item.value === String(countLineForm.materialCode || ''))) { ElMessage.warning('请选择有效的已发布物料'); return }
       await http.post(`/wms/counts/${detailData.value.id}/lines`, {
         materialCode: String(countLineForm.materialCode).trim(),
         locationCode: countLineForm.locationCode || null,
@@ -224,7 +229,26 @@ async function loadSrmReferences() {
   }
 }
 
+async function loadSharedMdmOptions() {
+  const fieldKeys = cfg.value.fields.map(field => field.key)
+  const needMaterials = fieldKeys.includes('materialCode') || (isWms.value && props.kind === 'counts')
+  const needUnits = fieldKeys.includes('unitCode')
+  sharedOptionsLoading.value = true
+  try {
+    const [materials, units] = await Promise.all([
+      needMaterials ? loadMdmMaterials() : Promise.resolve(mdmMaterials.value),
+      needUnits ? loadMdmUnits() : Promise.resolve(mdmUnits.value),
+    ])
+    if (needMaterials) mdmMaterials.value = materials
+    if (needUnits) mdmUnits.value = units
+  } catch (error: any) {
+    showErrorDialog(error?.message || '物料或单位主数据加载失败，请刷新后重试')
+  } finally { sharedOptionsLoading.value = false }
+}
+
 function fieldOptions(field: P3Field) {
+  if (field.key === 'materialCode') return mdmMaterials.value.map(item => ({ label: item.label, value: item.value }))
+  if (field.key === 'unitCode') return mdmUnits.value.map(item => ({ label: item.label, value: item.value }))
   if (props.kind === 'qualifications' && field.key === 'onboardingId')
     return onboardingOptions.value.map(row => ({ label: `${row.application_no} · ${row.supplier_name}`, value: String(row.id) }))
   if (props.kind === 'quotes' && field.key === 'rfqId')
@@ -236,6 +260,14 @@ function fieldOptions(field: P3Field) {
 
 function fieldDisabled(field: P3Field) {
   if (editingId.value === null) return isSrm.value && props.kind === 'asns' && ['supplierCode', 'materialCode'].includes(field.key)
+  if (isQms.value) {
+    const immutable: Record<string, string[]> = {
+      defects: ['inspectionNo'], reworks: ['defectNo'],
+      ncrs: ['ncrNo', 'inspectionNo', 'materialCode', 'defectQty', 'sourceNo', 'supplierCode'],
+      capas: ['capaNo', 'ncrNo'], '8d': ['eightDNo', 'ncrNo']
+    }
+    if (immutable[props.kind]?.includes(field.key)) return true
+  }
   const immutable: Record<string, string[]> = {
     onboarding: ['applicationNo'], qualifications: ['onboardingId', 'qualificationType', 'certificateNo'],
     rfqs: ['rfqNo'], quotes: ['rfqId', 'supplierCode'], 'purchase-orders': ['purchaseOrderNo'],
@@ -288,9 +320,11 @@ function cellValue(row: any, column: string) {
 }
 
 function displayValue(value: unknown) { return isQms.value ? zhQms(value) : zh(value) }
+function unitLabel(value: unknown) { return mdmUnits.value.find(item => item.value === String(value ?? ''))?.label || displayValue(value) }
 
 function displayCell(row: any, column: string) {
   const value = cellValue(row, column)
+  if (column === 'unit_code' || column === 'unitCode') return unitLabel(value)
   const state = cfg.value.statuses?.find(item => item.value === String(value))
   if (state) return state.label
   if (props.kind === 'purchase-orders') {
@@ -301,6 +335,7 @@ function displayCell(row: any, column: string) {
 }
 
 function displayDetail(key: string, value: unknown) {
+  if (key === 'unit_code' || key === 'unitCode') return unitLabel(value)
   if (['status', 'order_status', 'orderStatus', 'audit_result', 'auditResult', 'eight_d_status', 'eightDStatus'].includes(key)) {
     const state = cfg.value.statuses?.find(item => item.value === String(value))
     if (state) return state.label
@@ -603,8 +638,8 @@ async function importCsv(file: UploadFile) {
   }
 }
 
-watch(() => [props.kind, props.system], () => { page.value = 1; status.value = ''; keyword.value = ''; void load(); void loadSrmReferences() })
-onMounted(() => { void load(); void loadSrmReferences() })
+watch(() => [props.kind, props.system], () => { page.value = 1; status.value = ''; keyword.value = ''; void load(); void loadSrmReferences(); void loadSharedMdmOptions() })
+onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptions() })
 </script>
 
 <template>
@@ -652,7 +687,7 @@ onMounted(() => { void load(); void loadSrmReferences() })
     <el-dialog v-model="dialog" :title="formTitle" width="760">
       <el-form label-width="132px" class="form">
         <el-form-item v-for="field in cfg.fields" :key="field.key" :label="field.required ? field.label : `${field.label}（选填）`" :required="field.required">
-          <el-select v-if="field.type === 'select'" v-model="form[field.key]" clearable :placeholder="`请选择${field.label}`" :disabled="fieldDisabled(field)" style="width:100%" @change="srmFieldChanged(field)">
+          <el-select v-if="field.type === 'select' || field.key === 'materialCode' || field.key === 'unitCode'" v-model="form[field.key]" clearable :placeholder="field.key === 'materialCode' ? '从统一物料主数据中选择' : field.key === 'unitCode' ? '从统一计量单位字典中选择' : `请选择${field.label}`" :disabled="fieldDisabled(field) || sharedOptionsLoading" style="width:100%" @change="srmFieldChanged(field)">
             <el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" />
           </el-select>
           <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" type="date" value-format="YYYY-MM-DD" :placeholder="`请选择${field.label}`" :disabled="fieldDisabled(field)" style="width:100%" />
@@ -712,7 +747,7 @@ onMounted(() => { void load(); void loadSrmReferences() })
     <el-dialog v-model="countLineDialog" :title="countLineEditingId === null ? '新增盘点明细' : '登记实盘数量'" width="520" append-to-body>
       <el-form label-width="130px">
         <template v-if="countLineEditingId === null">
-          <el-form-item label="物料编码" required><el-input v-model="countLineForm.materialCode" placeholder="请输入物料编码" /></el-form-item>
+          <el-form-item label="物料编码" required><el-select v-model="countLineForm.materialCode" filterable placeholder="从统一物料主数据中选择"><el-option v-for="item in mdmMaterials" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
           <el-form-item label="库位编码（选填）"><el-input v-model="countLineForm.locationCode" placeholder="请输入库位编码" /></el-form-item>
           <el-form-item label="批次号（选填）"><el-input v-model="countLineForm.batchNo" placeholder="请输入批次号" /></el-form-item>
         </template>

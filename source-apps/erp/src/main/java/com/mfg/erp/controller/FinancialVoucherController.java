@@ -9,6 +9,7 @@ import com.mfg.security.config.CurrentUser;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +49,10 @@ public class FinancialVoucherController {
     @PostMapping
     @PreAuthorize("hasAuthority('ERP:VOUCHER:CREATE')")
     public ApiResponse<FinancialVoucher> create(@RequestBody FinancialVoucher voucher) {
+        if (isBlank(voucher.getVoucherNo())) {
+            voucher.setVoucherNo("V-" + System.currentTimeMillis() + "-"
+                    + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        }
         validate(voucher);
         if (repo.existsByVoucherNoAndCompanyCodeAndFiscalPeriod(
                 voucher.getVoucherNo(), voucher.getCompanyCode(), voucher.getFiscalPeriod())) {

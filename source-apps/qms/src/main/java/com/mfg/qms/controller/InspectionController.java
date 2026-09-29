@@ -109,13 +109,16 @@ public class InspectionController {
     }
 
     private void copyEditable(Inspection from, Inspection to) {
-        to.setInspectionNo(from.getInspectionNo()); to.setInspectionType(from.getInspectionType());
-        to.setMaterialCode(from.getMaterialCode()); to.setMaterialName(from.getMaterialName()); to.setBatchNo(from.getBatchNo());
-        to.setProdOrderNo(from.getProdOrderNo()); to.setWorkOrderNo(from.getWorkOrderNo()); to.setInspectedQty(from.getInspectedQty());
+        if (from.getInspectionNo() != null) to.setInspectionNo(from.getInspectionNo());
+        if (from.getInspectionType() != null) to.setInspectionType(from.getInspectionType());
+        if (from.getMaterialCode() != null) to.setMaterialCode(from.getMaterialCode());
+        to.setMaterialName(from.getMaterialName()); to.setBatchNo(from.getBatchNo());
+        to.setProdOrderNo(from.getProdOrderNo()); to.setWorkOrderNo(from.getWorkOrderNo());
+        if (from.getInspectedQty() != null) to.setInspectedQty(from.getInspectedQty());
         to.setOperationCode(from.getOperationCode()); to.setSupplierCode(from.getSupplierCode()); to.setDeliveryNo(from.getDeliveryNo());
         to.setSourceType(from.getSourceType()); to.setSourceNo(from.getSourceNo()); to.setStandardCode(from.getStandardCode());
         to.setWorkshopCode(from.getWorkshopCode()); to.setSampleQty(from.getSampleQty()); to.setInspectionBasis(from.getInspectionBasis());
-        to.setInspectionMethod(from.getInspectionMethod()); to.setEquipmentCode(from.getEquipmentCode());
+        to.setInspectionMethod(from.getInspectionMethod()); to.setInspectionPoint(from.getInspectionPoint()); to.setEquipmentCode(from.getEquipmentCode());
         to.setEnvironmentTemp(from.getEnvironmentTemp()); to.setEnvironmentHumidity(from.getEnvironmentHumidity()); to.setRemark(from.getRemark());
     }
 

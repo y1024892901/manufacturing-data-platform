@@ -1,6 +1,6 @@
 # eam/ — 目前进展
 
-> 截至 2026-09-28 · 对应整体计划见 [PLAN.md](PLAN.md)
+> 截至 2026-09-29 · 对应整体计划见 [PLAN.md](PLAN.md)
 
 ## 一句话结论
 
@@ -34,7 +34,8 @@ EAM 四类单据现在均支持分页查询、单据详情、新建、编辑和�
 | 故障上报联动 | `EquipmentController.fault` | 按 `equipmentCode` 反查设备取名称、置设备为 `FAULT`、写 `faultTime=now`、`reportedBy=CurrentUser`、状态置 `OPEN` |
 | 故障关闭联动 | `EquipmentController.close` | 故障置 `CLOSED`，同时把设备恢复为 `IDLE` |
 | 点检完成 | `EquipmentController.completeInspection` | 结果仅接受 `NORMAL`/`ABNORMAL`，回写 `actualDate=now` 与 `inspectorCode` |
-| 维修单三重校验 | `EquipmentRepairController.create` | ① 维修单号唯一；② 关联故障单存在；③ 维修设备必须与故障设备一致；④ 仅 `OPEN` 故障可建维修单 |
+| 维修单校验与并发保护 | `EquipmentRepairController.create` | 校验单号、故障单、设备、维修内容；设备须与故障一致，故障须为 `OPEN`，同一故障不得已有 `REPAIRING`/`PENDING_PARTS` 单；按故障记录加悲观锁串行化并发建单；成本与工时不得为负 |
+| 维修单修改校验 | `EquipmentRepairController.update` | 仅进行中或待备件单可修改；维修内容不能为空，维修成本与工时不得为负 |
 | 停机时长自动计算 | `EquipmentRepairController.complete` | `ChronoUnit.MINUTES.between(start, end)`，取 `Math.max(0, …)` 防负数 |
 | 维修完工联动 | `EquipmentRepairController.complete` | 结论为 `REPAIRED` 时，故障置 `CLOSED` 且设备置 `IDLE`（`PENDING_PARTS`/`SCRAPPED` 不联动） |
 
@@ -64,7 +65,7 @@ EAM 四类单据现在均支持分页查询、单据详情、新建、编辑和�
 | POST | `/api/eam/inspections/{id}/complete` | 完成点检（`result` 必填，`abnormalDesc` 可选） |
 | GET | `/api/eam/repairs` | 维修单分页查询 |
 | GET | `/api/eam/repairs/{id}` | 维修单详情查询 |
-| POST | `/api/eam/repairs` | 创建维修单（校验故障存在、设备一致、故障未关闭） |
+| POST | `/api/eam/repairs` | 创建维修单（校验输入、故障存在且未关闭、设备一致、无其他活动维修单；按故障行锁防并发重复） |
 | PUT | `/api/eam/repairs/{id}` | 修改进行中或待备件维修单的内容、备件、成本与工时 |
 | DELETE | `/api/eam/repairs/{id}` | 删除未完工维修单并恢复设备故障状态 |
 | POST | `/api/eam/repairs/{id}/complete` | 维修完工（`result` 限 `REPAIRED`/`PENDING_PARTS`/`SCRAPPED`，自动算停机时长） |

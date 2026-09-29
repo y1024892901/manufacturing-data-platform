@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { systemByCode } from '../shared/systemCatalog'
 
 const LoginView = () => import('../views/LoginView.vue')
 const PortalLayout = () => import('../layouts/PortalLayout.vue')
@@ -128,6 +129,44 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({ history: createWebHistory(), routes })
+const platformTitle = '制造业运营数据'
+const portalPageTitles: Record<string, string> = {
+  '/portal': '统一门户',
+  '/portal/ai': '智能问答',
+  '/portal/users': '用户管理',
+  '/portal/roles': '角色管理',
+  '/portal/organization': '组织管理',
+  '/portal/approval': '审批中心',
+  '/portal/events': '事件监控',
+  '/portal/audit': '审计日志',
+  '/portal/operations': '运营看板'
+}
+
+router.afterEach(to => {
+  if (to.path === '/login') {
+    document.title = `登录-${platformTitle}`
+    return
+  }
+
+  const systemCode = [...to.matched]
+    .reverse()
+    .map(record => String(record.meta.system || ''))
+    .find(Boolean)
+  if (systemCode) {
+    const system = systemByCode(systemCode)
+    const pageTitle = system?.menus.find(menu => menu.route === to.path)?.label
+      || [...(system?.menus || [])]
+        .filter(menu => to.path.startsWith(`${menu.route}/`))
+        .sort((left, right) => right.route.length - left.route.length)[0]?.label
+      || String(to.meta.title || '系统首页')
+    document.title = `${system?.shortName || systemCode.toUpperCase()}${system?.name || ''}-${pageTitle}-${platformTitle}`
+    return
+  }
+
+  const portalPageTitle = portalPageTitles[to.path] || String(to.meta.title || '统一门户')
+  document.title = `${portalPageTitle}-${platformTitle}`
+})
+
 router.beforeEach(async to => {
   const auth = useAuthStore()
   if (to.meta.public) return auth.token ? '/portal' : true

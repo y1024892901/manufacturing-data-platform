@@ -2,6 +2,7 @@ package com.mfg.mes.service;
 
 import com.mfg.common.api.ErrorCode;
 import com.mfg.common.exception.BizException;
+import com.mfg.mes.entity.ProdResult;
 import com.mfg.mes.entity.WorkOrder;
 import com.mfg.mes.repo.WorkOrderRepository;
 import com.mfg.mes.repo.WorkReportRepository;
@@ -21,6 +22,7 @@ public class WorkOrderService {
     private final WorkOrderRepository workOrders;
     private final WorkReportRepository reports;
     private final ScopedQueryService scope;
+    private final ProdResultService prodResults;
 
     @Transactional(readOnly = true)
     public Page<WorkOrder> page(int page, int size) {
@@ -36,6 +38,7 @@ public class WorkOrderService {
     @Transactional
     public WorkOrder create(WorkOrder input) {
         validateHeader(input);
+        ProdResult lockedResult = prodResults.lockForOrder(input);
         if (workOrders.existsByWorkOrderNo(input.getWorkOrderNo())) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "工单号已存在");
         }
@@ -49,7 +52,9 @@ public class WorkOrderService {
         input.setWorkshopUser(CurrentUser.usernameOrSystem());
         input.setCreatedAt(LocalDateTime.now());
         input.setUpdatedAt(input.getCreatedAt());
-        return workOrders.save(input);
+        WorkOrder saved = workOrders.save(input);
+        prodResults.synchronizeLocked(saved.getProdOrderNo(), lockedResult);
+        return saved;
     }
 
     @Transactional
@@ -65,9 +70,18 @@ public class WorkOrderService {
         if (input.getPlanQty().compareTo(current.getCompletedQty()) < 0) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "计划数量不能小于已报工数量");
         }
+        String previousProdOrderNo = current.getProdOrderNo();
+        ProdResult oldResult = prodResults.lockForOrder(current);
+        ProdResult newResult = previousProdOrderNo.equals(input.getProdOrderNo())
+                ? oldResult : prodResults.lockForOrder(input);
         copyEditableFields(input, current);
         current.setUpdatedAt(LocalDateTime.now());
-        return workOrders.save(current);
+        WorkOrder saved = workOrders.save(current);
+        if (!saved.getProdOrderNo().equals(previousProdOrderNo)) {
+            prodResults.synchronizeLocked(previousProdOrderNo, oldResult);
+        }
+        prodResults.synchronizeLocked(saved.getProdOrderNo(), newResult);
+        return saved;
     }
 
     @Transactional
@@ -76,10 +90,14 @@ public class WorkOrderService {
         if (!"CREATED".equals(current.getStatus()) && !"RELEASED".equals(current.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "已开工或已完工工单不能删除");
         }
+        ProdResult lockedResult = prodResults.lockForOrder(current);
         if (reports.existsByWorkOrderNo(current.getWorkOrderNo())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "工单已有报工记录，不能删除");
         }
+        String prodOrderNo = current.getProdOrderNo();
         workOrders.delete(current);
+        workOrders.flush();
+        prodResults.synchronizeLocked(prodOrderNo, lockedResult);
     }
 
     @Transactional

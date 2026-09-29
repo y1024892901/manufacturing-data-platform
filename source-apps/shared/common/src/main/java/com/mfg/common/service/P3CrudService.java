@@ -33,11 +33,11 @@ public class P3CrudService {
     );
     private static final Set<String> QMS_KINDS = Set.of("standards", "sampling-plans", "ncrs", "capas", "8d");
     private static final Map<String, Set<String>> QMS_EDITABLE = Map.of(
-        "standards", Set.of("standard_code", "standard_name", "inspection_type", "material_code", "version_no", "aql_level", "effective_date", "owner_user", "reference_doc", "remark"),
-        "sampling-plans", Set.of("plan_code", "plan_name", "aql_level", "lot_min", "lot_max", "sample_size", "accept_qty", "reject_qty", "sampling_method", "inspection_level", "sample_unit", "effective_date", "reference_doc", "owner_user", "remark"),
-        "ncrs", Set.of("severity", "responsible_dept", "defect_type", "defect_desc", "containment_action", "root_cause", "due_date", "owner_user", "remark"),
-        "capas", Set.of("root_cause", "corrective_action", "preventive_action", "owner_user", "due_date", "effectiveness_criteria", "effectiveness_result", "effectiveness_notes", "remark"),
-        "8d", Set.of("supplier_code", "team_members", "problem_desc", "containment_action", "root_cause", "corrective_action", "preventive_action", "owner_user", "due_date", "effectiveness_result", "effectiveness_notes", "remark")
+        "standards", Set.of("standard_code", "standard_name", "inspection_type", "material_code", "version_no", "aql_level", "effective_date", "owner_user", "reference_doc", "inspection_scope", "remark"),
+        "sampling-plans", Set.of("plan_code", "plan_name", "aql_level", "lot_min", "lot_max", "sample_size", "accept_qty", "reject_qty", "sampling_method", "inspection_level", "sample_unit", "sampling_frequency", "effective_date", "reference_doc", "owner_user", "remark"),
+        "ncrs", Set.of("severity", "responsible_dept", "defect_type", "defect_desc", "containment_action", "root_cause", "risk_evaluation", "due_date", "owner_user", "remark"),
+        "capas", Set.of("root_cause", "corrective_action", "preventive_action", "owner_user", "due_date", "effectiveness_criteria", "effectiveness_result", "effectiveness_notes", "effectiveness_evidence", "remark"),
+        "8d", Set.of("supplier_code", "supplier_reference_no", "team_members", "problem_desc", "containment_action", "root_cause", "corrective_action", "preventive_action", "owner_user", "due_date", "effectiveness_result", "effectiveness_notes", "remark")
     );
     private static final Set<String> WMS_DRAFT_KINDS = Set.of("putaway", "transfers", "counts");
     private static final Set<String> WMS_TRACE_KINDS = Set.of("receipts");

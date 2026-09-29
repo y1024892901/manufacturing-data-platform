@@ -30,13 +30,11 @@ public class CrmRecordService {
     private Spec spec(String kind) {
         return switch(kind) {
             case "leads" -> new Spec("crm_lead","owner_user",fields(
-                    "customerName","customer_name","contactName","contact_name","contactPhone","contact_phone",
-                    "contactEmail","contact_email","contactTitle","contact_title","industry","industry",
-                    "sourceChannel","source_channel","intentLevel","intent_level","score","score",
+                    "customerId","customer_id","sourceChannel","source_channel","intentLevel","intent_level","score","score",
                     "expectedBudget","expected_budget","expectedCloseDate","expected_close_date",
                     "preferredContactMethod","preferred_contact_method"));
             case "opportunities" -> new Spec("crm_opportunity","owner_user",fields(
-                    "opportunityName","opportunity_name","customerCode","customer_code","expectAmount","expect_amount",
+                    "opportunityName","opportunity_name","customerId","customer_id","customerCode","customer_code","sourceLeadNo","source_lead_no","expectAmount","expect_amount",
                     "expectSignDate","expect_sign_date","probability","probability","expectedCloseDate","expected_close_date",
                     "contactName","contact_name","leadSource","lead_source","nextStep","next_step",
                     "description","description","forecastCategory","forecast_category","priority","priority","remark","remark"));
@@ -71,9 +69,14 @@ public class CrmRecordService {
         Spec spec=spec(kind); Map<String,Object> row=load(spec,id); ensureOwner(spec,row);
         ensureEditable(kind,row);
         validateRequiredUpdates(kind,body);
-        if("opportunities".equals(kind) && body.containsKey("customerCode")) {
-            List<Map<String,Object>> customers=db.queryForList("SELECT customer_name FROM src_mdm.md_customer WHERE customer_code=? AND status='PUBLISHED'",body.get("customerCode"));
-            if(customers.isEmpty())throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED,"客户不存在或尚未发布");
+        Map<String,Object> customer=null;
+        if(Set.of("leads","opportunities").contains(kind)) {
+            Object customerId=body.get("customerId");
+            Object customerCode=body.get("customerCode");
+            if(isBlank(customerId)&&!isBlank(customerCode))customerId=findCustomerIdByCode(customerCode);
+            if(isBlank(customerId))customerId=row.get("customer_id");
+            if(isBlank(customerId))throw BizException.of(ErrorCode.PARAM_INVALID,"请选择客户档案");
+            customer=publishedCustomer(customerId);
         }
         if("quotations".equals(kind) && (body.containsKey("opportunityNo") || body.containsKey("customerCode"))) {
             Object opportunityNo=body.getOrDefault("opportunityNo",row.get("opportunity_no"));
@@ -82,18 +85,44 @@ public class CrmRecordService {
                 throw BizException.of(ErrorCode.PARAM_INVALID,"关联商机与客户不匹配");
         }
         if("complaints".equals(kind) && body.containsKey("customerCode")) ensurePublishedCustomer(body.get("customerCode"));
+        String oldLeadNo="opportunities".equals(kind)?stringValue(row.get("source_lead_no")):null;
+        String newLeadNo="opportunities".equals(kind)?(body.containsKey("sourceLeadNo")?stringValue(body.get("sourceLeadNo")):oldLeadNo):null;
+        Map<String,Object> linkedLead=null;
+        if(newLeadNo!=null) {
+            linkedLead=findLead(newLeadNo);
+            if(!Objects.equals(number(linkedLead.get("customer_id")),number(customer.get("id"))))
+                throw BizException.of(ErrorCode.PARAM_INVALID,"来源线索与所选客户不一致");
+            Object converted=linkedLead.get("converted_opportunity_no");
+            if(converted!=null&&!String.valueOf(row.get("opportunity_no")).equals(String.valueOf(converted)))
+                throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"该线索已关联其他商机");
+            if(!Objects.equals(oldLeadNo,newLeadNo)&&!Set.of("NEW","FOLLOWING").contains(String.valueOf(linkedLead.get("status"))))
+                throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"所选线索当前状态不可关联商机");
+        }
         List<String> assignments=new ArrayList<>(); List<Object> args=new ArrayList<>();
         for(var entry:spec.fields().entrySet()) if(body.containsKey(entry.getKey())) {
+            if(Set.of("leads","opportunities").contains(kind)&&Set.of("customerId","customerCode").contains(entry.getKey()))continue;
             assignments.add(entry.getValue()+"=?"); args.add(convert(entry.getValue(),body.get(entry.getKey())));
         }
         if(assignments.isEmpty() && !body.containsKey("lines") && !body.containsKey("paymentPlans"))
             throw BizException.of(ErrorCode.PARAM_INVALID,"没有可保存的字段");
-        if("opportunities".equals(kind) && body.containsKey("customerCode")) {
-            assignments.add("customer_name=(SELECT customer_name FROM src_mdm.md_customer WHERE customer_code=?)");args.add(body.get("customerCode"));
+        if(customer!=null) {
+            assignments.add("customer_id=?");args.add(customer.get("id"));
+            assignments.add("customer_code=?");args.add(customer.get("customer_code"));
+            assignments.add("customer_name=?");args.add(customer.get("customer_name"));
+            assignments.add("contact_name=?");args.add(customer.get("contact_person"));
+            if("leads".equals(kind)) {
+                assignments.add("contact_phone=?");args.add(customer.get("contact_phone"));
+                assignments.add("contact_email=?");args.add(customer.get("contact_email"));
+                assignments.add("industry=?");args.add(customer.get("industry"));
+            }
         }
         if(body.containsKey("lines") && !"quotations".equals(kind))throw BizException.of(ErrorCode.PARAM_INVALID,"只有报价支持维护产品明细");
         if(body.containsKey("paymentPlans") && !"contracts".equals(kind))throw BizException.of(ErrorCode.PARAM_INVALID,"只有合同支持维护回款计划");
         if(!assignments.isEmpty()) { args.add(id); db.update("UPDATE src_crm."+spec.table()+" SET "+String.join(",",assignments)+" WHERE id=?",args.toArray()); }
+        if("opportunities".equals(kind)&&!Objects.equals(oldLeadNo,newLeadNo)) {
+            if(oldLeadNo!=null)db.update("UPDATE src_crm.crm_lead SET status='FOLLOWING',converted_opportunity_no=NULL WHERE lead_no=? AND converted_opportunity_no=?",oldLeadNo,row.get("opportunity_no"));
+            if(newLeadNo!=null)db.update("UPDATE src_crm.crm_lead SET status='CONVERTED',converted_opportunity_no=? WHERE lead_no=?",row.get("opportunity_no"),newLeadNo);
+        }
         if("quotations".equals(kind) && body.containsKey("lines")) updateQuoteLines(id,body.get("lines"));
         if("contracts".equals(kind) && body.containsKey("paymentPlans")) updatePaymentPlans(id,row,body.get("paymentPlans"));
         return load(spec,id);
@@ -112,6 +141,7 @@ public class CrmRecordService {
             case "opportunities" -> {
                 if(Set.of("WON","LOST").contains(String.valueOf(row.get("stage_code")))) locked();
                 if(count("SELECT COUNT(*) FROM src_crm.crm_quotation WHERE opportunity_no=?",row.get("opportunity_no"))>0) locked();
+                if(row.get("source_lead_no")!=null)db.update("UPDATE src_crm.crm_lead SET status='FOLLOWING',converted_opportunity_no=NULL WHERE lead_no=? AND converted_opportunity_no=?",row.get("source_lead_no"),row.get("opportunity_no"));
                 db.update("DELETE FROM src_crm.crm_opportunity_follow WHERE opportunity_no=?",row.get("opportunity_no"));
                 db.update("DELETE FROM src_crm.crm_opportunity_product WHERE opportunity_no=?",row.get("opportunity_no"));
                 db.update("DELETE FROM src_crm.crm_competitor WHERE opportunity_no=?",row.get("opportunity_no"));
@@ -157,8 +187,8 @@ public class CrmRecordService {
     }
     private void validateRequiredUpdates(String kind,Map<String,Object> body) {
         Map<String,String> required=switch(kind) {
-            case "leads" -> Map.of("customerName","客户名称");
-            case "opportunities" -> Map.of("opportunityName","商机名称","customerCode","客户编码");
+            case "leads" -> Map.of();
+            case "opportunities" -> Map.of("opportunityName","商机名称");
             case "complaints" -> Map.of("customerCode","客户编码","problemDesc","问题描述");
             case "contracts" -> Map.of("contractName","合同名称");
             default -> Map.of();
@@ -209,6 +239,7 @@ public class CrmRecordService {
     }
     private Object convert(String column,Object value) {
         if(value==null || (value instanceof String s && s.isBlank())) return null;
+        if(column.equals("customer_id"))return Long.valueOf(String.valueOf(value));
         if(column.endsWith("_date"))return Date.valueOf(String.valueOf(value));
         if(column.equals("response_due_at"))return java.sql.Timestamp.valueOf(String.valueOf(value).replace('T',' '));
         if(Set.of("expected_budget","expect_amount","probability","score","auto_renew","renewal_notice_days").contains(column)) {
@@ -219,6 +250,12 @@ public class CrmRecordService {
         return value;
     }
     private long count(String sql,Object... values){Long n=db.queryForObject(sql,Long.class,values);return n==null?0:n;}
+    private Long findCustomerIdByCode(Object code){List<Long> ids=db.query("SELECT id FROM src_mdm.md_customer WHERE customer_code=? AND status='PUBLISHED'",(rs,row)->rs.getLong(1),String.valueOf(code));if(ids.isEmpty())throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED,"客户不存在或尚未发布");return ids.get(0);}
+    private Map<String,Object> publishedCustomer(Object id){if(isBlank(id))throw BizException.of(ErrorCode.PARAM_INVALID,"请选择客户档案");var f=scope.filter("src_mdm.md_customer","c");List<Object>args=new ArrayList<>();args.add(Long.valueOf(String.valueOf(id)));args.addAll(f.parameters());List<Map<String,Object>>rows=db.queryForList("SELECT c.id,c.customer_code,c.customer_name,c.contact_person,c.contact_phone,c.contact_email,c.industry FROM src_mdm.md_customer c WHERE c.id=? AND c.status='PUBLISHED' AND ("+f.sql()+")",args.toArray());if(rows.isEmpty())throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED,"客户不存在、未发布或超出数据范围");return rows.get(0);}
+    private Map<String,Object> findLead(String leadNo){List<Map<String,Object>>rows=db.queryForList("SELECT id,lead_no,customer_id,status,converted_opportunity_no FROM src_crm.crm_lead WHERE lead_no=?",leadNo);if(rows.isEmpty())throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND,"来源线索不存在");return rows.get(0);}
+    private boolean isBlank(Object value){return value==null||String.valueOf(value).isBlank();}
+    private String stringValue(Object value){return isBlank(value)?null:String.valueOf(value).trim();}
+    private Long number(Object value){return value==null?null:Long.valueOf(String.valueOf(value));}
     private void locked(){throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"单据已进入后续流程或已关联业务，不能编辑或删除；请新建版本或走终止流程");}
     private BigDecimal decimal(Map<String,Object> m,String key){Object v=m.get(key);return v==null||String.valueOf(v).isBlank()?BigDecimal.ZERO:new BigDecimal(String.valueOf(v));}
     private String string(Map<String,Object>m,String key){Object v=m.get(key);return v==null||String.valueOf(v).isBlank()?null:String.valueOf(v).trim();}

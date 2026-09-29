@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record SalesOrderCommand(
-        @NotBlank String salesOrderNo,
+        String salesOrderNo,
         @NotBlank String customerCode,
         @NotNull LocalDate deliveryDate,
         String sourceOpportunityNo,

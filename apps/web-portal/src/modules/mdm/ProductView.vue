@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
 import { zh } from '../../shared/display'
+import { loadMdmUnits } from '../../shared/mdmOptions'
 
 const rows = ref<any[]>([])
 const loading = ref(false)
@@ -13,6 +14,8 @@ const size = ref(20)
 const total = ref(0)
 const detail = ref<any>(null)
 const detailVisible = ref(false)
+const unitLabels = ref(new Map<string, string>())
+function unitLabel(value: unknown) { return unitLabels.value.get(String(value ?? '')) || zh(value) }
 
 function mdmStatus(value: unknown) {
   return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
@@ -46,7 +49,11 @@ function search() {
   load()
 }
 
-onMounted(load)
+onMounted(async () => {
+  try { unitLabels.value = new Map((await loadMdmUnits()).map(unit => [unit.value, unit.label])) }
+  catch { /* HTTP 拦截器会直接显示中文错误弹框。 */ }
+  await load()
+})
 </script>
 
 <template>
@@ -69,7 +76,7 @@ onMounted(load)
         <el-table-column prop="productName" label="产品名称" min-width="180" />
         <el-table-column prop="productModel" label="产品型号" min-width="145" />
         <el-table-column prop="lifecycleStatus" label="生命周期" min-width="115"><template #default="{row}">{{ zh(row.lifecycleStatus) }}</template></el-table-column>
-        <el-table-column prop="unitCode" label="计量单位" width="100"><template #default="{row}">{{ zh(row.unitCode) }}</template></el-table-column>
+        <el-table-column prop="unitCode" label="计量单位" width="140"><template #default="{row}">{{ unitLabel(row.unitCode) }}</template></el-table-column>
         <el-table-column prop="weightKg" label="单重（千克）" width="125" />
         <el-table-column prop="versionNo" label="版本" width="80" />
         <el-table-column label="状态" width="110"><template #default="{row}"><el-tag :type="row.status==='PUBLISHED'?'success':'info'">{{ mdmStatus(row.status) }}</el-tag></template></el-table-column>
@@ -83,7 +90,7 @@ onMounted(load)
         <el-descriptions-item label="产品名称">{{ detail.productName }}</el-descriptions-item>
         <el-descriptions-item label="产品型号">{{ detail.productModel || '—' }}</el-descriptions-item>
         <el-descriptions-item label="生命周期">{{ zh(detail.lifecycleStatus) }}</el-descriptions-item>
-        <el-descriptions-item label="计量单位">{{ zh(detail.unitCode) }}</el-descriptions-item>
+        <el-descriptions-item label="计量单位">{{ unitLabel(detail.unitCode) }}</el-descriptions-item>
         <el-descriptions-item label="单重（千克）">{{ detail.weightKg ?? '—' }}</el-descriptions-item>
         <el-descriptions-item label="上市日期">{{ detail.launchDate || '—' }}</el-descriptions-item>
         <el-descriptions-item label="停产日期">{{ detail.eolDate || '—' }}</el-descriptions-item>

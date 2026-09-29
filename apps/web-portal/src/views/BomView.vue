@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import http from '../api/http'
 import TablePager from '../shared/components/TablePager.vue'
 import { zh } from '../shared/display'
+import { loadMdmUnits } from '../shared/mdmOptions'
 
 const rows = ref<any[]>([])
 const loading = ref(false)
@@ -13,6 +14,8 @@ const status = ref('')
 const detail = ref<any>(null)
 const drawer = ref(false)
 const substitutes = ref<Record<number, any[]>>({})
+const unitLabels = ref(new Map<string, string>())
+function unitLabel(value: unknown) { return unitLabels.value.get(String(value ?? '')) || zh(value) }
 
 function mdmStatus(value: unknown) {
   return String(value || '').toUpperCase() === 'PENDING' ? '待处理' : zh(value)
@@ -52,7 +55,11 @@ function filter() {
   load()
 }
 
-onMounted(load)
+onMounted(async () => {
+  try { unitLabels.value = new Map((await loadMdmUnits()).map(unit => [unit.value, unit.label])) }
+  catch { /* HTTP 拦截器会直接显示中文错误弹框。 */ }
+  await load()
+})
 </script>
 
 <template>
@@ -96,7 +103,7 @@ onMounted(load)
         </el-descriptions>
         <h3 class="detail-heading">物料组成</h3>
         <div v-for="line in detail.lines || []" :key="line.id" class="line">
-          <div class="line-main"><b>{{ line.lineNo }} · {{ line.childMaterialCode }} {{ line.childMaterialName }}</b><span>用量 {{ line.qtyPer }} {{ zh(line.unitCode) }}</span></div>
+          <div class="line-main"><b>{{ line.lineNo }} · {{ line.childMaterialCode }} {{ line.childMaterialName }}</b><span>用量 {{ line.qtyPer }} {{ unitLabel(line.unitCode) }}</span></div>
           <div class="substitutes">
             <span v-if="!(substitutes[line.id] || []).length" class="empty-sub">暂无替代料</span>
             <el-tag v-for="item in substitutes[line.id] || []" :key="item.id" :type="item.status==='ACTIVE'?'success':'info'">

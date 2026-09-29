@@ -7,10 +7,12 @@ import com.mfg.mdm.repo.CustomerRepository;
 import com.mfg.mdm.service.MdmOutboxService;
 import com.mfg.security.scope.ScopedQueryService;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -19,7 +21,8 @@ import static org.mockito.Mockito.*;
 class CustomerEntryServiceTest {
     private final CustomerRepository customers = mock(CustomerRepository.class);
     private final MdmOutboxService outbox = mock(MdmOutboxService.class);
-    private final CustomerEntryService service = new CustomerEntryService(customers, mock(ScopedQueryService.class), outbox);
+    private final JdbcTemplate db = mock(JdbcTemplate.class);
+    private final CustomerEntryService service = new CustomerEntryService(customers, mock(ScopedQueryService.class), outbox, db);
 
     @Test
     void createsPublishedMasterRecordAndQueuesDistribution() {
@@ -54,5 +57,36 @@ class CustomerEntryServiceTest {
 
         verify(customers, never()).saveAndFlush(any());
         verifyNoInteractions(outbox);
+    }
+
+    @Test
+    void updatesPublishedMasterByIdAndQueuesTheNextVersion() {
+        Customer existing = new Customer();
+        existing.setId(81L);
+        existing.setCustomerCode("CUS-081");
+        existing.setCustomerName("旧客户名称");
+        existing.setStatus("PUBLISHED");
+        existing.setVersionNo(4);
+        when(customers.findById(81L)).thenReturn(Optional.of(existing));
+        when(customers.findByUnifiedSocialCodeAndIdNot("91310000ABCDEF1234", 81L)).thenReturn(List.of());
+        when(customers.saveAndFlush(any(Customer.class))).thenAnswer(call -> call.getArgument(0));
+        when(outbox.enqueueAndGetEventId(any(Customer.class))).thenReturn("event-82");
+
+        Map<String, Object> result = service.update(81L, new CustomerEntryCommand(
+                "IGNORED-CLIENT-CODE", "新客户名称", "新简称", "91310000ABCDEF1234",
+                "A", "DIRECT", "装备制造", "上海", new BigDecimal("90000.00"),
+                "NET60", null, "李先生", "13900000000", "li@example.com", "上海市新地址"));
+
+        Customer saved = (Customer) result.get("customer");
+        assertEquals(81L, saved.getId());
+        assertEquals("CUS-081", saved.getCustomerCode(), "the stable customer code is never taken from the edit form");
+        assertEquals("新客户名称", saved.getCustomerName());
+        assertEquals("PUBLISHED", saved.getStatus());
+        assertEquals(5, saved.getVersionNo());
+        assertEquals("event-82", result.get("distributionEventId"));
+        assertEquals("PENDING", result.get("distributionStatus"));
+        verify(db).update(contains("UPDATE src_crm.crm_lead"), any(), any(), any(), any(), any(), any(), eq(81L));
+        verify(db).update(contains("UPDATE src_crm.crm_opportunity"), any(), any(), any(), eq(81L));
+        verify(outbox).enqueueAndGetEventId(saved);
     }
 }

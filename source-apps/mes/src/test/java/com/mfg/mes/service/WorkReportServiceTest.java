@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +25,7 @@ class WorkReportServiceTest {
     @Mock private WorkReportRepository reports;
     @Mock private WorkOrderRepository workOrders;
     @Mock private ScopedQueryService scope;
+    @Mock private ProdResultService prodResults;
     @InjectMocks private WorkReportService service;
 
     @Test
@@ -51,6 +53,12 @@ class WorkReportServiceTest {
         assertEquals("STARTED", order.getStatus());
         verify(reports).saveAndFlush(input);
         verify(workOrders).save(order);
+        var sequence = inOrder(workOrders, prodResults, scope, reports);
+        sequence.verify(workOrders).findByWorkOrderNoForUpdate("WO-001");
+        sequence.verify(prodResults).lockForOrder(order);
+        sequence.verify(scope).requireVisible(com.mfg.security.scope.ScopedResource.WORK_ORDER, 1L);
+        sequence.verify(reports).existsByReportNo("R-001");
+        verify(prodResults).synchronizeLocked("PO-001", null);
     }
 
     @Test
@@ -79,7 +87,7 @@ class WorkReportServiceTest {
         current.setId(10L);
         current.setReportQty(new BigDecimal("10"));
         List<WorkReport> orderReports = new ArrayList<>(List.of(current));
-        when(reports.findById(10L)).thenReturn(Optional.of(current));
+        when(reports.findByIdForUpdate(10L)).thenReturn(Optional.of(current));
         when(workOrders.findByWorkOrderNoForUpdate("WO-001")).thenReturn(Optional.of(order));
         when(reports.findAllByWorkOrderNo("WO-001")).thenAnswer(invocation -> orderReports);
         doAnswer(invocation -> { orderReports.remove(current); return null; }).when(reports).delete(current);
@@ -94,6 +102,43 @@ class WorkReportServiceTest {
         assertNull(order.getActualEndTime());
         verify(reports).flush();
         verify(workOrders).save(order);
+        verify(prodResults).synchronizeLocked("PO-001", null);
+    }
+
+    @Test
+    void updatingReportRecalculatesWorkOrderAndProductionResult() {
+        WorkOrder order = startedOrder();
+        order.setStatus("COMPLETED");
+        order.setCompletedQty(new BigDecimal("10"));
+        order.setActualEndTime(LocalDateTime.parse("2026-09-28T10:00:00"));
+        WorkReport current = report("R-011", "WO-001", "8", "2");
+        current.setId(11L);
+        current.setReportQty(new BigDecimal("10"));
+        List<WorkReport> orderReports = new ArrayList<>(List.of(current));
+        when(reports.findByIdForUpdate(11L)).thenReturn(Optional.of(current));
+        when(workOrders.findByWorkOrderNoForUpdate("WO-001")).thenReturn(Optional.of(order));
+        when(reports.existsByReportNoAndIdNot("R-011-EDIT", 11L)).thenReturn(false);
+        when(reports.findAllByWorkOrderNo("WO-001")).thenAnswer(invocation -> orderReports);
+        when(reports.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workOrders.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WorkReport replacement = report("R-011-EDIT", "WO-001", "6", "0");
+        replacement.setWorkHours(new BigDecimal("2.5"));
+        service.update(11L, replacement);
+
+        assertEquals("6", order.getCompletedQty().toPlainString());
+        assertEquals("6", order.getQualifiedQty().toPlainString());
+        assertEquals(BigDecimal.ZERO, order.getScrapQty());
+        assertEquals("2.5", order.getActualHours().toPlainString());
+        assertEquals("STARTED", order.getStatus());
+        assertNull(order.getActualEndTime());
+        verify(prodResults).synchronizeLocked("PO-001", null);
+        var sequence = inOrder(reports, workOrders, prodResults, scope);
+        sequence.verify(reports).findByIdForUpdate(11L);
+        sequence.verify(workOrders).findByWorkOrderNoForUpdate("WO-001");
+        sequence.verify(prodResults).lockForOrder(order);
+        sequence.verify(scope).requireVisible(com.mfg.security.scope.ScopedResource.WORK_REPORT, 11L);
+        sequence.verify(reports).existsByReportNoAndIdNot("R-011-EDIT", 11L);
     }
 
     private WorkOrder startedOrder() {

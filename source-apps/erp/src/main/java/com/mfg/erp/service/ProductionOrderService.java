@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -37,11 +38,13 @@ public class ProductionOrderService {
 
     @Transactional
     public ProductionOrder create(ProductionOrderCommand command) {
-        if (repo.existsByProdOrderNo(command.prodOrderNo())) {
+        String prodOrderNo = documentNo(command.prodOrderNo());
+        if (repo.existsByProdOrderNo(prodOrderNo)) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "生产订单号已存在");
         }
         ProductionOrder order = new ProductionOrder();
         order.setCreatedBy(CurrentUser.usernameOrSystem());
+        order.setProdOrderNo(prodOrderNo);
         apply(order, command);
         return repo.save(order);
     }
@@ -52,10 +55,11 @@ public class ProductionOrderService {
         if (!"CREATED".equals(order.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有尚未下达的生产订单可以修改");
         }
-        if (!order.getProdOrderNo().equals(command.prodOrderNo().trim())) {
+        String requestedNo = blankToNull(command.prodOrderNo());
+        if (requestedNo != null && !order.getProdOrderNo().equals(requestedNo)) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "生产订单号创建后不可修改");
         }
-        if (repo.existsByProdOrderNoAndIdNot(command.prodOrderNo(), id)) {
+        if (requestedNo != null && repo.existsByProdOrderNoAndIdNot(requestedNo, id)) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "生产订单号已存在");
         }
         apply(order, command);
@@ -115,7 +119,6 @@ public class ProductionOrderService {
         Bom bom = boms.findCurrentByProduct(command.productCode())
                 .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "该产品没有已发布的当前 BOM"));
 
-        order.setProdOrderNo(command.prodOrderNo().trim());
         order.setSalesOrderNo(salesOrderNo);
         order.setProductCode(product.getMaterialCode());
         order.setProductName(product.getMaterialName());
@@ -137,5 +140,11 @@ public class ProductionOrderService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String documentNo(String requested) {
+        String value = blankToNull(requested);
+        return value == null ? "MO-" + System.currentTimeMillis() + "-"
+                + UUID.randomUUID().toString().substring(0, 6).toUpperCase() : value;
     }
 }

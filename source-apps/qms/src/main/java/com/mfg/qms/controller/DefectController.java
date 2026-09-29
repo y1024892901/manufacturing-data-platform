@@ -63,10 +63,12 @@ public class DefectController {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "不合格品单号已被使用");
         if (input.getInspectionNo() != null && !input.getInspectionNo().equals(current.getInspectionNo()))
             throw invalidState("不合格品来源检验单创建后不能更换");
-        current.setDefectNo(input.getDefectNo()); current.setDefectQty(input.getDefectQty()); current.setDefectType(input.getDefectType());
+        if (input.getDefectNo() != null) current.setDefectNo(input.getDefectNo());
+        if (input.getDefectQty() != null) current.setDefectQty(input.getDefectQty());
+        current.setDefectType(input.getDefectType());
         current.setDefectDesc(input.getDefectDesc()); current.setDefectLevel(input.getDefectLevel()); current.setResponsibleDept(input.getResponsibleDept());
         current.setRootCause(input.getRootCause()); current.setContainmentAction(input.getContainmentAction());
-        current.setLocationDesc(input.getLocationDesc()); current.setRemark(input.getRemark());
+        current.setLocationDesc(input.getLocationDesc()); current.setDefectCode(input.getDefectCode()); current.setRemark(input.getRemark());
         validateRequired(current);
         var inspection = inspections.findByInspectionNo(current.getInspectionNo())
             .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "关联检验单不存在"));

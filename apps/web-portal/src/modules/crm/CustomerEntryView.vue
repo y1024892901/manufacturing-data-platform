@@ -10,6 +10,7 @@ const submitting = ref(false)
 const dialog = ref(false)
 const detailDialog = ref(false)
 const selected = ref<any>(null)
+const editingId = ref<number | null>(null)
 const keyword = ref('')
 const page = ref(1)
 const size = ref(20)
@@ -51,7 +52,15 @@ async function load() {
 }
 
 function openCreate() {
+  editingId.value = null
   resetForm()
+  dialog.value = true
+}
+
+function openEdit(row: any) {
+  editingId.value = Number(row.id)
+  resetForm()
+  Object.assign(form, Object.fromEntries(fields.map(field => [field.key, row[field.key] ?? null])))
   dialog.value = true
 }
 
@@ -62,10 +71,13 @@ async function submit() {
   }
   submitting.value = true
   try {
-    const response = await http.post('/crm/customers', form)
+    const response = editingId.value
+      ? await http.put(`/crm/customers/${editingId.value}`, form)
+      : await http.post('/crm/customers', form)
     const result = response.data.data
-    ElMessage.success(`客户已写入主数据，分发任务已排队（${result.distributionEventId}）`)
+    ElMessage.success(`${editingId.value ? '客户信息已更新' : '客户已写入主数据'}，分发任务已排队（${result.distributionEventId}）`)
     dialog.value = false
+    editingId.value = null
     page.value = 1
     await load()
   } catch { /* API 错误由全局弹窗提示 */ }
@@ -101,11 +113,11 @@ onMounted(load)
 
     <div class="info-strip">
       <span class="status-dot"></span>
-      <span>主数据单一来源：CRM 与 MDM 读取同一客户档案</span>
-      <span class="divider">·</span>
-      <span>创建后自动发布并排入分发队列</span>
-      <span class="divider">·</span>
-      <b>客户档案不可修改或删除</b>
+        <span>主数据单一来源：CRM 与 MDM 读取同一客户档案</span>
+        <span class="divider">·</span>
+        <span>新增或修改后自动更新版本并排入分发队列</span>
+        <span class="divider">·</span>
+        <b>修改通过客户主键回写 MDM</b>
     </div>
 
     <el-card shadow="never" class="list-card">
@@ -123,13 +135,13 @@ onMounted(load)
         <el-table-column label="等级" width="90"><template #default="{ row }">{{ valueOf(row, 'customerLevel') }}</template></el-table-column>
         <el-table-column prop="region" label="地区" min-width="120" />
         <el-table-column label="主数据状态" width="120"><template #default="{ row }"><el-tag type="success" effect="light">{{ zh(row.status) }}</el-tag></template></el-table-column>
-        <el-table-column label="操作" width="90" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="viewDetail(row)">查看</el-button></template></el-table-column>
+        <el-table-column label="操作" width="140" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openEdit(row)">编辑</el-button><el-button link @click="viewDetail(row)">查看</el-button></template></el-table-column>
       </el-table>
       <div class="pagination"><el-pagination v-model:current-page="page" v-model:page-size="size" :total="total" layout="total, sizes, prev, pager, next" @current-change="load" @size-change="page = 1; load()" /></div>
     </el-card>
 
-    <el-dialog v-model="dialog" title="新增客户档案" width="min(820px, 94vw)" destroy-on-close>
-      <div class="dialog-intro">录入后立即发布到统一主数据，并生成可追踪的分发任务。该档案保存后不可修改。</div>
+    <el-dialog v-model="dialog" :title="editingId ? '编辑客户档案' : '新增客户档案'" width="min(820px, 94vw)" destroy-on-close>
+      <div class="dialog-intro">{{ editingId ? '保存后按当前客户主键更新 MDM 主档，版本递增并生成可追踪的分发任务。' : '录入后立即发布到统一主数据，并生成可追踪的分发任务。' }}</div>
       <el-form :model="form" label-position="top" class="entry-form">
         <el-form-item v-for="field in fields" :key="field.key" :label="field.label" :required="Boolean(field.required)" :class="{ wide: field.span === 2 }">
           <el-select v-if="field.type === 'select'" v-model="form[field.key]" :placeholder="`请选择${field.label}`" clearable>
@@ -137,12 +149,12 @@ onMounted(load)
           </el-select>
           <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" :min="0" :precision="2" :step="1000" controls-position="right" />
           <el-input v-else-if="field.type === 'textarea'" v-model="form[field.key]" type="textarea" :rows="2" :placeholder="`请输入${field.label}`" />
-          <el-input v-else v-model="form[field.key]" :placeholder="field.key === 'customerCode' ? '留空由系统自动生成' : `请输入${field.label}`" />
+          <el-input v-else v-model="form[field.key]" :disabled="field.key === 'customerCode' && Boolean(editingId)" :placeholder="field.key === 'customerCode' ? '留空由系统自动生成' : `请输入${field.label}`" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submit">保存并同步主数据</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">{{ editingId ? '保存修改并下发' : '保存并同步主数据' }}</el-button>
       </template>
     </el-dialog>
 

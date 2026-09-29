@@ -1,6 +1,6 @@
 # docs/ — 文档中心
 
-> 截至 2026-09-22 · 本页是文档索引，列出**实际存在**的文档
+> 截至 2026-09-29 · 本页是文档索引，列出**实际存在**的文档
 
 ## 现有文档
 
@@ -9,6 +9,7 @@
 | [current-status.md](current-status.md) | **当前进展总览** —— 十系统各自完成度与差距 | 维护中 |
 | [implementation-roadmap.md](implementation-roadmap.md) | 分阶段实施路线（P0–P7）与验收门槛 | 维护中 |
 | [system-functional-catalog.md](system-functional-catalog.md) | 十系统功能目录与代码实施边界；**最低验收五项**的定义处 | 稳定 |
+| [erp-gap-recommendations.md](erp-gap-recommendations.md) | 对照当前代码梳理的 ERP 常见缺口、优先级和建设顺序 | 维护中 |
 | [current-technology-baseline.md](current-technology-baseline.md) | 当前技术选型与运行边界；**优先于**任何早期技术描述 | 稳定 |
 
 ## 文档分层约定

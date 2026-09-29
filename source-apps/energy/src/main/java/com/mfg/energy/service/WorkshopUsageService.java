@@ -57,6 +57,8 @@ public class WorkshopUsageService {
         current.setShiftCode(input.getShiftCode());
         current.setCostCenterCode(input.getCostCenterCode());
         current.setBaselineValue(input.getBaselineValue());
+        current.setBaselinePeriodStartDate(input.getBaselinePeriodStartDate());
+        current.setBaselinePeriodEndDate(input.getBaselinePeriodEndDate());
         current.setWarningThresholdPercent(input.getWarningThresholdPercent());
         current.setRemark(input.getRemark());
         calculate(current);
@@ -94,6 +96,7 @@ public class WorkshopUsageService {
         nonNegative(usage.getTotalOutput(), "车间总产出");
         nonNegative(usage.getBaselineValue(), "能耗基线");
         nonNegative(usage.getWarningThresholdPercent(), "预警偏差阈值");
+        validateBaselinePeriod(usage.getBaselinePeriodStartDate(), usage.getBaselinePeriodEndDate());
         boolean duplicate = excludedId == null
                 ? repository.existsByWorkshopCodeIgnoreCaseAndStatDateAndEnergyType(usage.getWorkshopCode(), usage.getStatDate(), usage.getEnergyType())
                 : repository.existsByWorkshopCodeIgnoreCaseAndStatDateAndEnergyTypeAndIdNot(usage.getWorkshopCode(), usage.getStatDate(), usage.getEnergyType(), excludedId);
@@ -115,6 +118,10 @@ public class WorkshopUsageService {
     }
 
     private static void nonNegative(BigDecimal value, String label) { if (value != null && value.signum() < 0) throw BizException.badState(label + "不能小于零"); }
+    private static void validateBaselinePeriod(LocalDate startDate, LocalDate endDate) {
+        if ((startDate == null) != (endDate == null)) throw BizException.badState("基线期间起始日期和结束日期需同时填写");
+        if (startDate != null && startDate.isAfter(endDate)) throw BizException.badState("基线期间起始日期不能晚于结束日期");
+    }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
     private static String trim(String value) { return value == null ? null : value.trim(); }
     private static String trimToNull(String value) { String result = trim(value); return blank(result) ? null : result; }

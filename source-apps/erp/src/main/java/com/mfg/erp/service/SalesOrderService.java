@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,8 @@ public class SalesOrderService {
 
     @Transactional
     public SalesOrder create(SalesOrderCommand command) {
-        if (orders.existsBySalesOrderNo(command.salesOrderNo())) {
+        String salesOrderNo = documentNo(command.salesOrderNo(), "SO-");
+        if (orders.existsBySalesOrderNo(salesOrderNo)) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "销售订单号已存在");
         }
         String contractNo = blankToNull(command.sourceContractNo());
@@ -50,6 +52,7 @@ public class SalesOrderService {
         order.setSalesUser(CurrentUser.usernameOrSystem());
         order.setDeptCode(CurrentUser.get().getDeptCode());
         order.setCreatedBy(CurrentUser.usernameOrSystem());
+        order.setSalesOrderNo(salesOrderNo);
         applyHeader(order, command, customer);
         order.setTotalAmount(BigDecimal.ZERO);
         order = orders.save(order);
@@ -62,10 +65,11 @@ public class SalesOrderService {
         if (!"DRAFT".equals(order.getStatus())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有草稿销售订单可以修改");
         }
-        if (!order.getSalesOrderNo().equals(command.salesOrderNo().trim())) {
+        String requestedNo = blankToNull(command.salesOrderNo());
+        if (requestedNo != null && !order.getSalesOrderNo().equals(requestedNo)) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "销售订单号创建后不可修改");
         }
-        if (orders.existsBySalesOrderNoAndIdNot(command.salesOrderNo(), id)) {
+        if (requestedNo != null && orders.existsBySalesOrderNoAndIdNot(requestedNo, id)) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "销售订单号已存在");
         }
         String contractNo = blankToNull(command.sourceContractNo());
@@ -118,7 +122,6 @@ public class SalesOrderService {
     }
 
     private void applyHeader(SalesOrder order, SalesOrderCommand command, Customer customer) {
-        order.setSalesOrderNo(command.salesOrderNo().trim());
         order.setCustomerCode(customer.getCustomerCode());
         order.setCustomerName(customer.getCustomerName());
         order.setDeliveryDate(command.deliveryDate());
@@ -184,5 +187,11 @@ public class SalesOrderService {
     private String defaultValue(String value, String fallback) {
         String result = blankToNull(value);
         return result == null ? fallback : result;
+    }
+
+    private String documentNo(String requested, String prefix) {
+        String value = blankToNull(requested);
+        return value == null ? prefix + System.currentTimeMillis() + "-"
+                + UUID.randomUUID().toString().substring(0, 6).toUpperCase() : value;
     }
 }

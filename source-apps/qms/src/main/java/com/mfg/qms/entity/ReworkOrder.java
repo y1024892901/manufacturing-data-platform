@@ -25,6 +25,7 @@ public class ReworkOrder {
     @Column(name = "owner_user") private String ownerUser;
     @Column(name = "rework_method") private String reworkMethod;
     @Column(name = "verification_result") private String verificationResult;
+    @Column(name = "verification_note") private String verificationNote;
     @Column(name = "qualified_qty") private BigDecimal qualifiedQty;
     @Column(name = "scrap_qty") private BigDecimal scrapQty;
     @Column(name = "rework_remark") private String remark;

@@ -8,6 +8,7 @@ import com.mfg.energy.repo.EnergyAlertRepository;
 import com.mfg.energy.repo.EnergyMeterRepository;
 import com.mfg.energy.repo.EquipmentUsageRepository;
 import com.mfg.energy.repo.WorkshopUsageRepository;
+import com.mfg.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -78,6 +80,8 @@ class EnergyCrudServiceTest {
         usage.setStatDate(LocalDate.of(2026, 9, 1));
         usage.setEnergyValue(new BigDecimal("12"));
         usage.setOutputQty(new BigDecimal("3"));
+        usage.setBaselinePeriodStartDate(LocalDate.of(2026, 8, 1));
+        usage.setBaselinePeriodEndDate(LocalDate.of(2026, 8, 31));
         when(equipmentRepository.existsByEquipmentCodeIgnoreCaseAndStatDateAndStatHourAndEnergyType(
                 anyString(), any(LocalDate.class), nullable(Integer.class), anyString())).thenReturn(false);
         when(equipmentRepository.save(any(EquipmentUsage.class))).thenAnswer(call -> {
@@ -88,15 +92,22 @@ class EnergyCrudServiceTest {
 
         EquipmentUsage created = equipmentService.create(usage);
         assertEquals(new BigDecimal("4.000000"), created.getUnitConsumption());
+        assertEquals(LocalDate.of(2026, 8, 1), created.getBaselinePeriodStartDate());
+        assertEquals(LocalDate.of(2026, 8, 31), created.getBaselinePeriodEndDate());
         when(equipmentRepository.findById(2L)).thenReturn(Optional.of(created));
         EquipmentUsage replacement = new EquipmentUsage();
         replacement.setEquipmentCode("EQ-01");
         replacement.setStatDate(LocalDate.of(2026, 9, 1));
         replacement.setEnergyValue(new BigDecimal("15"));
         replacement.setOutputQty(new BigDecimal("3"));
+        replacement.setBaselinePeriodStartDate(LocalDate.of(2026, 7, 1));
+        replacement.setBaselinePeriodEndDate(LocalDate.of(2026, 7, 31));
         when(equipmentRepository.existsByEquipmentCodeIgnoreCaseAndStatDateAndStatHourAndEnergyTypeAndIdNot(
                 anyString(), any(LocalDate.class), nullable(Integer.class), anyString(), org.mockito.ArgumentMatchers.eq(2L))).thenReturn(false);
-        assertEquals(new BigDecimal("5.000000"), equipmentService.update(2L, replacement).getUnitConsumption());
+        EquipmentUsage updated = equipmentService.update(2L, replacement);
+        assertEquals(new BigDecimal("5.000000"), updated.getUnitConsumption());
+        assertEquals(LocalDate.of(2026, 7, 1), updated.getBaselinePeriodStartDate());
+        assertEquals(LocalDate.of(2026, 7, 31), updated.getBaselinePeriodEndDate());
         when(alertService.hasSource("EQUIPMENT", 2L)).thenReturn(false);
         equipmentService.delete(2L);
         verify(equipmentRepository).delete(created);
@@ -109,6 +120,8 @@ class EnergyCrudServiceTest {
         usage.setStatDate(LocalDate.of(2026, 9, 1));
         usage.setEnergyValue(new BigDecimal("20"));
         usage.setTotalOutput(new BigDecimal("4"));
+        usage.setBaselinePeriodStartDate(LocalDate.of(2026, 8, 1));
+        usage.setBaselinePeriodEndDate(LocalDate.of(2026, 8, 31));
         when(workshopRepository.existsByWorkshopCodeIgnoreCaseAndStatDateAndEnergyType(anyString(), any(LocalDate.class), anyString())).thenReturn(false);
         when(workshopRepository.save(any(WorkshopUsage.class))).thenAnswer(call -> {
             WorkshopUsage saved = call.getArgument(0);
@@ -118,18 +131,42 @@ class EnergyCrudServiceTest {
 
         WorkshopUsage created = workshopService.create(usage);
         assertEquals(new BigDecimal("5.000000"), created.getUnitConsumption());
+        assertEquals(LocalDate.of(2026, 8, 1), created.getBaselinePeriodStartDate());
+        assertEquals(LocalDate.of(2026, 8, 31), created.getBaselinePeriodEndDate());
         when(workshopRepository.findById(3L)).thenReturn(Optional.of(created));
         WorkshopUsage replacement = new WorkshopUsage();
         replacement.setWorkshopCode("WS-01");
         replacement.setStatDate(LocalDate.of(2026, 9, 1));
         replacement.setEnergyValue(new BigDecimal("24"));
         replacement.setTotalOutput(new BigDecimal("4"));
+        replacement.setBaselinePeriodStartDate(LocalDate.of(2026, 7, 1));
+        replacement.setBaselinePeriodEndDate(LocalDate.of(2026, 7, 31));
         when(workshopRepository.existsByWorkshopCodeIgnoreCaseAndStatDateAndEnergyTypeAndIdNot(
                 anyString(), any(LocalDate.class), anyString(), org.mockito.ArgumentMatchers.eq(3L))).thenReturn(false);
-        assertEquals(new BigDecimal("6.000000"), workshopService.update(3L, replacement).getUnitConsumption());
+        WorkshopUsage updated = workshopService.update(3L, replacement);
+        assertEquals(new BigDecimal("6.000000"), updated.getUnitConsumption());
+        assertEquals(LocalDate.of(2026, 7, 1), updated.getBaselinePeriodStartDate());
+        assertEquals(LocalDate.of(2026, 7, 31), updated.getBaselinePeriodEndDate());
         when(alertService.hasSource("WORKSHOP", 3L)).thenReturn(false);
         workshopService.delete(3L);
         verify(workshopRepository).delete(created);
+    }
+
+    @Test
+    void baselinePeriodDatesMustBePairedAndOrdered() {
+        EquipmentUsage usage = new EquipmentUsage();
+        usage.setEquipmentCode("EQ-01");
+        usage.setEnergyValue(new BigDecimal("12"));
+        usage.setBaselinePeriodStartDate(LocalDate.of(2026, 9, 2));
+        usage.setBaselinePeriodEndDate(LocalDate.of(2026, 9, 1));
+
+        assertThrows(BizException.class, () -> equipmentService.create(usage));
+
+        EquipmentUsage incompletePeriod = new EquipmentUsage();
+        incompletePeriod.setEquipmentCode("EQ-02");
+        incompletePeriod.setEnergyValue(new BigDecimal("12"));
+        incompletePeriod.setBaselinePeriodStartDate(LocalDate.of(2026, 9, 1));
+        assertThrows(BizException.class, () -> equipmentService.create(incompletePeriod));
     }
 
     @Test

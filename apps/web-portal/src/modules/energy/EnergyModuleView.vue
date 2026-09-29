@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
 import { zh } from '../../shared/display'
+import { loadMdmUnits } from '../../shared/mdmOptions'
 
 type Option = { label: string; value: string }
 type Field = { key: string; label: string; type?: 'text' | 'number' | 'date' | 'textarea' | 'select'; required?: boolean; options?: Option[]; min?: number; max?: number; placeholder?: string }
@@ -14,17 +15,14 @@ const energyTypes: Option[] = [
   { label: '电力', value: 'ELECTRIC' }, { label: '水', value: 'WATER' }, { label: '天然气', value: 'GAS' },
   { label: '蒸汽', value: 'STEAM' }, { label: '压缩空气', value: 'COMPRESSED_AIR' }, { label: '其他能源', value: 'OTHER' }
 ]
-const units: Option[] = [
-  { label: '千瓦时', value: 'KWH' }, { label: '立方米', value: 'M3' }, { label: '吨', value: 'TON' },
-  { label: '吉焦', value: 'GJ' }, { label: '兆瓦时', value: 'MWH' }, { label: '升', value: 'L' }
-]
+const units = ref<Option[]>([])
 const configurations: Record<string, PageConfig> = {
   meters: {
     title: '能源仪表与采集点', intro: '维护计量仪表、采集周期、归属对象和校准信息。', endpoint: '/energy/meters', createText: '新增仪表',
     fields: [
       { key: 'meterCode', label: '仪表编码', required: true }, { key: 'meterName', label: '仪表名称', required: true },
       { key: 'energyType', label: '能源类型', type: 'select', required: true, options: energyTypes },
-      { key: 'unitCode', label: '计量单位', type: 'select', required: true, options: units },
+      { key: 'unitCode', label: '计量单位', type: 'select', required: true },
       { key: 'meterKind', label: '计量层级', type: 'select', required: true, options: [{ label: '总表', value: 'MAIN' }, { label: '分表', value: 'SUBMETER' }] },
       { key: 'status', label: '使用状态', type: 'select', required: true, options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }, { label: '校准维护', value: 'MAINTENANCE' }] },
       { key: 'workshopCode', label: '所属车间编码' }, { key: 'equipmentCode', label: '绑定设备编码' },
@@ -42,24 +40,27 @@ const configurations: Record<string, PageConfig> = {
       { key: 'equipmentCode', label: '设备编码', required: true }, { key: 'meterCode', label: '仪表编码' },
       { key: 'statDate', label: '统计日期', type: 'date', required: true }, { key: 'statHour', label: '统计小时（0 至 23）', type: 'number', min: 0, max: 23 },
       { key: 'energyType', label: '能源类型', type: 'select', required: true, options: energyTypes },
-      { key: 'energyValue', label: '能耗量', type: 'number', required: true, min: 0 }, { key: 'unitCode', label: '计量单位', type: 'select', required: true, options: units },
+      { key: 'energyValue', label: '能耗量', type: 'number', required: true, min: 0 }, { key: 'unitCode', label: '计量单位', type: 'select', required: true },
       { key: 'runHours', label: '设备运行小时', type: 'number', min: 0 }, { key: 'outputQty', label: '同期产出数量', type: 'number', min: 0 },
-      { key: 'baselineValue', label: '同期能耗基线', type: 'number', min: 0 }, { key: 'warningThresholdPercent', label: '预警偏差（%）', type: 'number', min: 0 },
+      { key: 'baselineValue', label: '同期能耗基线', type: 'number', min: 0 },
+      { key: 'baselinePeriodStartDate', label: '基线期间起始日期', type: 'date' }, { key: 'baselinePeriodEndDate', label: '基线期间结束日期', type: 'date' },
+      { key: 'warningThresholdPercent', label: '预警偏差（%）', type: 'number', min: 0 },
       { key: 'shiftCode', label: '班次编码' }, { key: 'productionOrderNo', label: '生产订单号' }, { key: 'remark', label: '备注', type: 'textarea' }
     ],
-    columns: [{ key: 'equipmentCode', label: '设备编码' }, { key: 'meterCode', label: '仪表编码' }, { key: 'statDate', label: '统计日期' }, { key: 'energyType', label: '能源类型' }, { key: 'energyValue', label: '能耗量', unit: 'unitCode' }, { key: 'outputQty', label: '同期产出' }, { key: 'unitConsumption', label: '单位能耗', unit: 'unitCode' }, { key: 'abnormal', label: '是否超限' }]
+    columns: [{ key: 'equipmentCode', label: '设备编码' }, { key: 'meterCode', label: '仪表编码' }, { key: 'statDate', label: '统计日期' }, { key: 'energyType', label: '能源类型' }, { key: 'energyValue', label: '能耗量', unit: 'unitCode' }, { key: 'outputQty', label: '同期产出' }, { key: 'baselinePeriodStartDate', label: '基线起始日期' }, { key: 'baselinePeriodEndDate', label: '基线结束日期' }, { key: 'unitConsumption', label: '单位能耗', unit: 'unitCode' }, { key: 'abnormal', label: '是否超限' }]
   },
   workshops: {
     title: '车间能耗', intro: '按车间、日期和能源介质维护汇总，结合产出与基线计算单位能耗和偏差。', endpoint: '/energy/workshop-usages', createText: '登记车间能耗',
     fields: [
       { key: 'workshopCode', label: '车间编码', required: true }, { key: 'statDate', label: '统计日期', type: 'date', required: true },
       { key: 'energyType', label: '能源类型', type: 'select', required: true, options: energyTypes },
-      { key: 'energyValue', label: '能耗量', type: 'number', required: true, min: 0 }, { key: 'unitCode', label: '计量单位', type: 'select', required: true, options: units },
+      { key: 'energyValue', label: '能耗量', type: 'number', required: true, min: 0 }, { key: 'unitCode', label: '计量单位', type: 'select', required: true },
       { key: 'totalOutput', label: '同期总产出', type: 'number', min: 0 }, { key: 'baselineValue', label: '同期能耗基线', type: 'number', min: 0 },
+      { key: 'baselinePeriodStartDate', label: '基线期间起始日期', type: 'date' }, { key: 'baselinePeriodEndDate', label: '基线期间结束日期', type: 'date' },
       { key: 'warningThresholdPercent', label: '预警偏差（%）', type: 'number', min: 0 }, { key: 'shiftCode', label: '班次编码' },
       { key: 'costCenterCode', label: '成本中心编码' }, { key: 'remark', label: '备注', type: 'textarea' }
     ],
-    columns: [{ key: 'workshopCode', label: '车间编码' }, { key: 'statDate', label: '统计日期' }, { key: 'energyType', label: '能源类型' }, { key: 'energyValue', label: '能耗量', unit: 'unitCode' }, { key: 'totalOutput', label: '同期总产出' }, { key: 'unitConsumption', label: '单位能耗', unit: 'unitCode' }, { key: 'deviationRate', label: '偏离基线（%）' }, { key: 'abnormal', label: '是否超限' }]
+    columns: [{ key: 'workshopCode', label: '车间编码' }, { key: 'statDate', label: '统计日期' }, { key: 'energyType', label: '能源类型' }, { key: 'energyValue', label: '能耗量', unit: 'unitCode' }, { key: 'totalOutput', label: '同期总产出' }, { key: 'baselinePeriodStartDate', label: '基线起始日期' }, { key: 'baselinePeriodEndDate', label: '基线结束日期' }, { key: 'unitConsumption', label: '单位能耗', unit: 'unitCode' }, { key: 'deviationRate', label: '偏离基线（%）' }, { key: 'abnormal', label: '是否超限' }]
   },
   alerts: {
     title: '能耗异常告警', intro: '查看自动生成的基线超限告警，也可登记外部发现的能耗异常并跟踪处理结果。', endpoint: '/energy/alerts', createText: '登记告警',
@@ -114,7 +115,7 @@ function resetForm() {
     if (field.type === 'number') form[field.key] = null
     else if (field.type === 'date') form[field.key] = field.required ? todayLocal() : ''
     else if (field.key === 'energyType') form[field.key] = 'ELECTRIC'
-    else if (field.key === 'unitCode') form[field.key] = 'KWH'
+    else if (field.key === 'unitCode') form[field.key] = units.value.find(unit => unit.value === 'KWH')?.value || units.value[0]?.value || ''
     else if (field.key === 'meterKind') form[field.key] = 'SUBMETER'
     else if (field.key === 'status') form[field.key] = props.kind === 'alerts' ? 'OPEN' : 'ACTIVE'
     else if (field.key === 'severity') form[field.key] = 'MEDIUM'
@@ -134,7 +135,11 @@ async function load() {
   } finally { loading.value = false }
 }
 
-function openCreate() {
+async function openCreate() {
+  if (!units.value.length) {
+    try { units.value = (await loadMdmUnits()).map(unit => ({ label: unit.label, value: unit.value })) }
+    catch { return }
+  }
   editingId.value = null
   resetForm()
   dialog.value = true
@@ -204,7 +209,8 @@ function formatDate(value: unknown) {
 
 function displayValue(value: unknown, field?: Field) {
   if (value == null || value === '') return '—'
-  if (field?.options) return field.options.find(option => option.value === value)?.label || zh(value)
+  const options = field ? fieldOptions(field) : []
+  if (options.length) return options.find(option => option.value === value)?.label || zh(value)
   if (field?.type === 'date' || /^\d{4}-\d{2}-\d{2}/.test(String(value))) return formatDate(value)
   if (field?.type === 'number' || typeof value === 'number') {
     const formatted = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 4 }).format(Number(value))
@@ -214,11 +220,16 @@ function displayValue(value: unknown, field?: Field) {
 }
 
 function fieldByKey(key: string) { return config.value.fields.find(field => field.key === key) }
-function optionLabel(field: Field, value: unknown) { return field.options?.find(option => option.value === value)?.label || displayValue(value, field) }
+function fieldOptions(field: Field) { return field.key === 'unitCode' ? units.value : field.options || [] }
+function optionLabel(field: Field, value: unknown) { return fieldOptions(field).find(option => option.value === value)?.label || displayValue(value, field) }
 
 watch(() => props.kind, () => { page.value = 1; keyword.value = ''; load() })
 watch(keyword, () => { page.value = 1 })
-onMounted(load)
+onMounted(async () => {
+  try { units.value = (await loadMdmUnits()).map(unit => ({ label: unit.label, value: unit.value })) }
+  catch { /* HTTP 拦截器会直接显示中文错误弹框。 */ }
+  await load()
+})
 </script>
 
 <template>
@@ -254,7 +265,7 @@ onMounted(load)
           <el-col v-for="field in config.fields" :key="field.key" :span="field.type === 'textarea' ? 24 : 12">
             <el-form-item :label="field.required ? `${field.label}（必填）` : `${field.label}（非必填）`" :required="field.required">
               <el-select v-if="field.type === 'select'" v-model="form[field.key]" :clearable="!field.required" placeholder="请选择">
-                <el-option v-for="option in field.options" :key="option.value" :label="option.label" :value="option.value"/>
+                <el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value"/>
               </el-select>
               <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" type="date" value-format="YYYY-MM-DD" format="YYYY年MM月DD日" :placeholder="`请选择${field.label}`"/>
               <el-input-number v-else-if="field.type === 'number'" v-model="form[field.key]" :min="field.min ?? 0" :max="field.max" :controls="false" :placeholder="`请输入${field.label}`"/>

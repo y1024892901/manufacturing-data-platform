@@ -61,6 +61,8 @@ public class EquipmentUsageService {
         current.setRunHours(input.getRunHours());
         current.setOutputQty(input.getOutputQty());
         current.setBaselineValue(input.getBaselineValue());
+        current.setBaselinePeriodStartDate(input.getBaselinePeriodStartDate());
+        current.setBaselinePeriodEndDate(input.getBaselinePeriodEndDate());
         current.setWarningThresholdPercent(input.getWarningThresholdPercent());
         current.setShiftCode(input.getShiftCode());
         current.setProductionOrderNo(input.getProductionOrderNo());
@@ -102,6 +104,7 @@ public class EquipmentUsageService {
         nonNegative(usage.getOutputQty(), "产出数量");
         nonNegative(usage.getBaselineValue(), "能耗基线");
         nonNegative(usage.getWarningThresholdPercent(), "预警偏差阈值");
+        validateBaselinePeriod(usage.getBaselinePeriodStartDate(), usage.getBaselinePeriodEndDate());
         if (usage.getStatHour() != null && (usage.getStatHour() < 0 || usage.getStatHour() > 23)) {
             throw BizException.badState("统计小时应在 0 到 23 之间");
         }
@@ -137,6 +140,10 @@ public class EquipmentUsageService {
     }
 
     private static void nonNegative(BigDecimal value, String label) { if (value != null && value.signum() < 0) throw BizException.badState(label + "不能小于零"); }
+    private static void validateBaselinePeriod(LocalDate startDate, LocalDate endDate) {
+        if ((startDate == null) != (endDate == null)) throw BizException.badState("基线期间起始日期和结束日期需同时填写");
+        if (startDate != null && startDate.isAfter(endDate)) throw BizException.badState("基线期间起始日期不能晚于结束日期");
+    }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
     private static String trim(String value) { return value == null ? null : value.trim(); }
     private static String trimToNull(String value) { String result = trim(value); return blank(result) ? null : result; }

@@ -50,23 +50,31 @@ public class EquipmentRepairController {
     @PreAuthorize("hasAuthority('EAM:REPAIR:CREATE')")
     @Transactional
     public ApiResponse<EquipmentRepair> create(@RequestBody EquipmentRepair repair) {
+        requireText(repair.getRepairNo(), "维修单号");
+        requireText(repair.getFaultNo(), "关联故障单号");
+        requireText(repair.getEquipmentCode(), "设备编码");
+        requireText(repair.getRepairContent(), "维修内容");
+        requireNonNegative(repair.getRepairCost(), "维修成本");
+        requireNonNegative(repair.getMaintenanceHours(), "维修工时");
+        // Lock before any consistent-read query so a waiter sees the prior creator's committed repair.
+        EquipmentFault fault = faults.findByFaultNoForUpdate(repair.getFaultNo())
+                .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "关联故障单不存在"));
         if (repairs.existsByRepairNo(repair.getRepairNo())) {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "维修单号已存在");
         }
-        EquipmentFault fault = faults.findByFaultNo(repair.getFaultNo())
-                .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "关联故障单不存在"));
         if (!fault.getEquipmentCode().equals(repair.getEquipmentCode())) {
             throw invalid("维修设备必须与故障设备一致");
         }
         if (!"OPEN".equals(fault.getStatus())) throw invalid("只有待处理故障可创建维修单");
-        if (repairs.existsByFaultNoAndRepairResult(repair.getFaultNo(), "REPAIRING")) {
-            throw invalid("此故障已有进行中的维修单");
+        if (hasActiveRepair(repair.getFaultNo())) {
+            throw invalid("此故障已有进行中或待备件的维修单");
         }
         Equipment equipment = equipments.findByEquipmentCode(repair.getEquipmentCode())
                 .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "设备不存在"));
         repair.setRepairStartTime(repair.getRepairStartTime() == null ? LocalDateTime.now() : repair.getRepairStartTime());
         repair.setRepairEndTime(null);
         repair.setDowntimeMinutes(0);
+        repair.setRepairCost(repair.getRepairCost() == null ? BigDecimal.ZERO : repair.getRepairCost());
         repair.setRepairmanCode(CurrentUser.usernameOrSystem());
         repair.setRepairResult("REPAIRING");
         equipment.setStatus("MAINTENANCE");
@@ -80,6 +88,7 @@ public class EquipmentRepairController {
     public ApiResponse<EquipmentRepair> update(@PathVariable Long id, @RequestBody EquipmentRepair incoming) {
         EquipmentRepair repair = repair(id);
         requireInProgress(repair);
+        requireText(incoming.getRepairContent(), "维修内容");
         if (incoming.getRepairNo() != null && !incoming.getRepairNo().equals(repair.getRepairNo())) {
             throw invalid("维修单号不可修改");
         }
@@ -157,6 +166,15 @@ public class EquipmentRepairController {
 
     private void requireNonNegative(BigDecimal value, String label) {
         if (value != null && value.signum() < 0) throw invalid(label + "不能为负数");
+    }
+
+    private void requireText(String value, String label) {
+        if (value == null || value.isBlank()) throw invalid(label + "不能为空");
+    }
+
+    private boolean hasActiveRepair(String faultNo) {
+        return repairs.existsByFaultNoAndRepairResult(faultNo, "REPAIRING")
+                || repairs.existsByFaultNoAndRepairResult(faultNo, "PENDING_PARTS");
     }
 
     private int safeSize(int size) {

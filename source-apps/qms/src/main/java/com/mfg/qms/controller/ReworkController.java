@@ -59,9 +59,13 @@ public class ReworkController {
             throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "返工单号已被使用");
         if (input.getDefectNo() != null && !input.getDefectNo().equals(current.getDefectNo()))
             throw invalidState("返工单来源不合格品创建后不能更换");
-        current.setReworkNo(input.getReworkNo()); current.setProdOrderNo(input.getProdOrderNo()); current.setWorkOrderNo(input.getWorkOrderNo());
-        current.setReworkQty(input.getReworkQty()); current.setReworkHours(input.getReworkHours()); current.setDelayDays(input.getDelayDays());
-        current.setOwnerUser(input.getOwnerUser()); current.setReworkMethod(input.getReworkMethod()); current.setRemark(input.getRemark());
+        if (input.getReworkNo() != null) current.setReworkNo(input.getReworkNo());
+        if (input.getProdOrderNo() != null) current.setProdOrderNo(input.getProdOrderNo());
+        current.setWorkOrderNo(input.getWorkOrderNo());
+        if (input.getReworkQty() != null) current.setReworkQty(input.getReworkQty());
+        current.setReworkHours(input.getReworkHours()); current.setDelayDays(input.getDelayDays());
+        current.setOwnerUser(input.getOwnerUser()); current.setReworkMethod(input.getReworkMethod());
+        current.setVerificationNote(input.getVerificationNote()); current.setRemark(input.getRemark());
         validateRequired(current);
         var defect = defects.findByDefectNo(current.getDefectNo())
             .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "不合格品记录不存在"));
@@ -95,7 +99,7 @@ public class ReworkController {
     public ApiResponse<ReworkOrder> complete(@PathVariable Long id, @RequestParam(defaultValue = "DONE") String status) {
         ReworkOrder order = find(id);
         if (!"DOING".equals(order.getStatus())) throw invalidState("只有进行中的返工单可完工");
-        if (!"DONE".equals(status) && !"SCRAPPED".equals(status)) throw invalidState("返工结论只能为完成或轉为报废");
+        if (!"DONE".equals(status) && !"SCRAPPED".equals(status)) throw invalidState("返工结论只能为完成或转为报废");
         order.setStatus(status); order.setEndTime(LocalDateTime.now());
         order.setVerificationResult("DONE".equals(status) ? "PASSED" : "FAILED");
         order.setQualifiedQty("DONE".equals(status) ? order.getReworkQty() : BigDecimal.ZERO);

@@ -19,6 +19,11 @@ Object.assign(labels, {
   FULL:'全库', ZONE:'库区', CYCLE:'循环盘点', GENERAL:'普通货位', RECEIVING:'收货区', PICKING:'拣选位', BULK:'存储区', SHIPPING:'发货区',
   RETURN:'退货区', WMS:'仓储系统'
 })
+Object.assign(labels, {
+  ANALYZED:'影响已分析', ECO_CREATED:'已生成变更命令', REVIEWING:'审批中', IMPLEMENTED:'已实施',
+  ADDED:'新增项', REMOVED:'移除项', CHANGED:'已变更', UNCHANGED:'未变更',
+  DOCUMENT:'文档', 'ZH-CN':'简体中文', 'EN-US':'英语（美国）', DESIGN_CHANGE:'设计变更', PROCESS_CHANGE:'工艺变更'
+})
 const crmValueLabels:Record<string,string>={
   NEW:'新建',LEAD:'初步线索',QUOTATION:'报价审批',QUOTATION_RISK:'报价风险审批',CONTRACT:'合同审批',
   CANCELED:'已取消',CLOSED:'已关闭',IN_PROGRESS:'处理中',FOLLOWING:'跟进中',
@@ -59,6 +64,8 @@ const qmsValueLabels:Record<string,string>={
   PENDING:'待判定',OPEN:'待处理',REVIEWING:'评审中',IMPLEMENTING:'整改中',VERIFYING:'验证中',
   PASSED:'合格',FAILED:'不合格',REWORK:'返工',DOING:'返工中',DONE:'已完成',SCRAP:'报废',SCRAPPED:'已报废',
   CONCESSION:'让步接收',RETURN:'退货',RETURNED:'已退供',PARTIAL:'部分通过',MINOR:'轻微',MAJOR:'一般',CRITICAL:'严重',
+  SIZE:'尺寸',APPEARANCE:'外观',PERFORMANCE:'性能',MATERIAL:'材质',
+  RECEIPT:'采购收货',WMS_RECEIPT:'仓储收货',MANUAL:'手工登记',PROD_ORDER:'生产订单',WORK_ORDER:'生产工单',CUSTOMER_RETURN:'客户退货',
   AQL:'AQL抽样',FIXED_COUNT:'固定数量抽样',PERCENTAGE:'百分比抽样',GENERAL_I:'一般检验I级',GENERAL_II:'一般检验II级',
   GENERAL_III:'一般检验III级',STRICT:'加严检验',REDUCED:'放宽检验',
 }
@@ -126,8 +133,8 @@ Object.assign(keyLabels, {
   delivery_date:'承诺交货日期',tax_rate:'税率（%）',minimum_order_qty:'最小起订量',payment_term_days:'付款账期（天）',
   freight_amount:'运费金额（元）',valid_until:'报价有效期至',warranty_months:'质保期（月）',attachment_name:'报价文件名称',
   purchase_order_no:'采购订单号',supplier_code:'供应商编码',material_name:'物料名称',
-  order_qty:'订购数量',received_qty:'已收数量',unit_code:'计量单位',total_amount:'订单总额',expected_date:'要求交货日期',
-  promised_date:'供应商承诺日期',prod_order_no:'关联生产订单',shipping_terms:'运输条款',buyer_name:'采购员',
+  order_qty:'订购数量',received_qty:'已收数量',unit_code:'计量单位',total_amount:'订单总额',order_date:'订单日期',expected_date:'要求交货日期',
+  promised_date:'供应商承诺日期',prod_order_no:'关联生产订单',purchase_user:'采购员账号',confirmed_at:'供应商确认时间',shipping_terms:'运输条款',buyer_name:'采购员',
   supplier_reference_no:'供应商参考号',supplier_note:'订单备注',order_status:'订单状态',
   asn_no:'发货通知单号',batch_no:'供应商批次',ship_qty:'发运数量',ship_date:'发运日期',
   expected_arrival_date:'预计到货日期',carrier_name:'承运单位',tracking_no:'物流单号',packing_slip_no:'送货单号',
@@ -136,6 +143,26 @@ Object.assign(keyLabels, {
   owner_user:'整改负责人',close_note:'验证关闭说明',period_code:'统计期间',delivery_rate:'准时交付率',
   qualified_rate:'来料合格率',score:'综合得分',rating:'供应商等级',website:'官方网站',note:'备注',
   updated_at:'更新时间',created_by:'创建人',closed_at:'关闭时间',created_at:'创建时间'
+})
+Object.assign(keyLabels, {
+  family_code:'产品族编码', family_name:'产品族名称', market_segment:'市场细分', family_description:'产品族说明',
+  product_code:'产品编码', version_no:'版本号', version_name:'版本名称', lifecycle_status:'生命周期', baseline_no:'基线编号',
+  change_summary:'版本变更摘要', target_market:'适用市场', doc_no:'文档编号', doc_name:'文档名称', doc_type:'文档类型',
+  file_name:'文件名', confidentiality:'密级', language_code:'文档语言', description:'说明', product_version:'产品版本',
+  bom_version:'BOM版本', routing_version:'工艺路线版本', baseline_purpose:'基线用途', remark:'备注',
+  ecr_id:'变更申请记录号', eco_id:'变更命令记录号', problem_desc:'问题描述', urgency:'紧急程度', proposal:'建议方案',
+  planned_effective_date:'计划生效日期', impact_type:'影响类型', object_code:'受影响对象编码', impact_desc:'影响说明',
+  risk_level:'风险等级', cost_impact:'成本影响估算', schedule_impact_days:'进度影响天数', change_scope:'变更范围',
+  target_type:'目标类型', target_code:'目标编码', new_version:'目标版本', ecn_status:'变更通知状态', change_type:'变更类型',
+  target_version:'目标版本', change_content:'变更内容', ecrNo:'变更申请编号', ecrTitle:'变更申请标题', ecoNo:'变更命令编号',
+  ecoTitle:'变更命令标题', ecnNo:'变更通知编号', ecnTitle:'变更通知标题', productCode:'产品编码', versionNo:'版本号',
+  versionName:'版本名称', lifecycleStatus:'生命周期', baselineNo:'基线编号', changeSummary:'版本变更摘要', targetMarket:'适用市场',
+  docNo:'文档编号', docName:'文档名称', docType:'文档类型', fileName:'文件名', languageCode:'文档语言', productVersion:'产品版本',
+  bomVersion:'BOM版本', routingCode:'工艺路线编码', routingVersion:'工艺路线版本', baselinePurpose:'基线用途',
+  plannedEffectiveDate:'计划生效日期', impactType:'影响类型', objectCode:'受影响对象编码', impactDesc:'影响说明', riskLevel:'风险等级',
+  costImpact:'成本影响估算', scheduleImpactDays:'进度影响天数', changeScope:'变更范围', targetType:'目标类型', targetCode:'目标编码',
+  newVersion:'目标版本', ecnStatus:'变更通知状态', changeType:'变更类型', targetVersion:'目标版本', changeContent:'变更内容',
+  effectiveDate:'生效日期', createdAt:'创建时间', updatedAt:'更新时间', createdBy:'创建人', submittedBy:'提交人', approvedBy:'审批人'
 })
 const crmKeyLabels:Record<string,string>={
   lead_source:'线索来源',leadSource:'线索来源',lead_id:'线索记录编号',follow_type:'跟进方式',followType:'跟进方式',
@@ -185,7 +212,9 @@ const qmsKeyLabels:Record<string,string>={
   inspected_qty:'送检数量',sample_qty:'抽样数量',qualified_qty:'合格数量',defect_qty:'不合格数量',inspect_result:'检验结论',result:'检验结论',inspect_date:'检验日期',inspector_code:'检验人',
   prod_order_no:'生产订单号',work_order_no:'生产工单号',operation_code:'工序编码',delivery_no:'送货单号',workshop_code:'车间编码',
   inspection_basis:'检验依据',inspection_method:'检验方法',equipment_code:'检验设备编号',environment_temp:'环境温度（℃）',environment_humidity:'环境湿度（%）',
+  inspection_scope:'适用范围说明',sampling_frequency:'抽样频次说明',inspection_point:'检验位置或工位',
   defect_no:'不合格品单号',defect_type:'缺陷类型',defect_desc:'缺陷描述',defect_level:'严重程度',disposition:'处置方式',disposition_qty:'处置数量',
+  defect_code:'缺陷代码',risk_evaluation:'风险评估说明',verification_note:'复验说明',effectiveness_evidence:'有效性证据或数据',supplier_reference_no:'供应商8D参考号',
   disposition_at:'处置时间',disposition_by:'处置人',responsible_dept:'责任部门',root_cause:'根本原因',containment_action:'临时遏制措施',location_desc:'发生位置',
   ncr_no:'NCR编号',severity:'严重程度',due_date:'完成期限',status:'单据状态',capa_no:'CAPA编号',corrective_action:'纠正措施',preventive_action:'预防措施',
   effectiveness_criteria:'有效性判据',effectiveness_result:'有效性结论',effectiveness_notes:'验证说明',verified_by:'验证人',verified_at:'验证时间',closed_at:'关闭时间',closed_by:'关闭人',

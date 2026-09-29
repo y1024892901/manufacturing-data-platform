@@ -6,7 +6,7 @@ export function showErrorDialog(message: unknown, title = '操作失败') {
   const text = typeof message === 'string' && message.trim()
     ? message
     : '发生未知错误，请稍后重试'
-  const key = title + ':' + text
+  const key = text
   const now = Date.now()
   if (now - (shownAt.get(key) || 0) < 1200) return
   shownAt.set(key, now)

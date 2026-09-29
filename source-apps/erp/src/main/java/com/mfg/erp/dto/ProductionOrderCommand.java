@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record ProductionOrderCommand(
-        @NotBlank String prodOrderNo,
+        String prodOrderNo,
         String salesOrderNo,
         @NotBlank String productCode,
         @DecimalMin("0.0001") BigDecimal planQty,
