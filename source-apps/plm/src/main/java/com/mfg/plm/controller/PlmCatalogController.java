@@ -15,6 +15,7 @@ import java.util.Map;
 public class PlmCatalogController {
     private final PlmCatalogService service;
 
+
     @GetMapping("/{type}")
     @PreAuthorize("hasAuthority('PLM:CATALOG:VIEW')")
     public ApiResponse<Page<Map<String, Object>>> page(

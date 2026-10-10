@@ -3,6 +3,7 @@ package com.mfg.srm.controller;
 import com.mfg.common.api.ApiResponse;
 import com.mfg.common.api.ErrorCode;
 import com.mfg.common.exception.BizException;
+import com.mfg.common.integration.BusinessEventService;
 import com.mfg.security.config.CurrentUser;
 import com.mfg.security.scope.ScopedQueryService;
 import com.mfg.security.scope.ScopedResource;
@@ -13,6 +14,7 @@ import com.mfg.srm.repo.SupplierDeliveryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/srm")
@@ -28,6 +31,8 @@ public class PurchaseOrderController {
     private final ScopedQueryService scope;
     private final PurchaseOrderRepository repo;
     private final SupplierDeliveryRepository deliveries;
+    private final JdbcTemplate db;
+    private final BusinessEventService events;
 
     @GetMapping("/purchase-orders")
     @PreAuthorize("hasAuthority('SRM:PURCHASE:VIEW')")
@@ -48,10 +53,14 @@ public class PurchaseOrderController {
         }
         order.setPurchaseOrderNo(order.getPurchaseOrderNo().trim());
         order.setSupplierCode(order.getSupplierCode().trim());
-        order.setSupplierName(order.getSupplierName().trim());
+        Map<String, Object> supplier = masterRow("SELECT supplier_name FROM src_srm.srm_md_supplier WHERE supplier_code=?",
+                order.getSupplierCode().trim(), "供应商尚未同步到 SRM，请先完成主数据分发");
+        Map<String, Object> material = masterRow("SELECT material_name,COALESCE(purchase_unit_code,base_unit_code) unit_code FROM src_srm.srm_md_material WHERE material_code=?",
+                order.getMaterialCode().trim(), "物料尚未同步到 SRM，请先完成主数据分发");
+        order.setSupplierName(String.valueOf(supplier.get("supplier_name")));
         order.setMaterialCode(order.getMaterialCode().trim());
-        order.setMaterialName(order.getMaterialName().trim());
-        order.setUnitCode(order.getUnitCode().trim());
+        order.setMaterialName(String.valueOf(material.get("material_name")));
+        order.setUnitCode(String.valueOf(material.get("unit_code")));
         order.setStatus("CREATED");
         order.setOrderDate(LocalDate.now());
         order.setPurchaseUser(CurrentUser.usernameOrSystem());
@@ -62,6 +71,7 @@ public class PurchaseOrderController {
 
     @PostMapping("/purchase-orders/{id}/send")
     @PreAuthorize("hasAuthority('SRM:PURCHASE:SEND')")
+    @org.springframework.transaction.annotation.Transactional
     public ApiResponse<PurchaseOrder> send(@PathVariable Long id) {
         scope.requireVisible(ScopedResource.PURCHASE_ORDER, id);
         PurchaseOrder order = repo.findById(id).orElseThrow(() -> BizException.notFound("采购订单", id));
@@ -69,7 +79,10 @@ public class PurchaseOrderController {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "只有新建状态的采购订单可以下达");
         }
         order.setStatus("SENT");
-        return ApiResponse.ok(repo.save(order));
+        PurchaseOrder sent = repo.save(order);
+        events.publish("SRM.PURCHASE_ORDER.SENT", "srm", "wms", "PURCHASE_ORDER", sent.getId(),
+                Map.of("purchaseOrderNo", sent.getPurchaseOrderNo()));
+        return ApiResponse.ok(sent);
     }
 
     @GetMapping("/deliveries")
@@ -138,5 +151,11 @@ public class PurchaseOrderController {
 
     private boolean blank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private Map<String, Object> masterRow(String sql, String code, String missingMessage) {
+        var rows = db.queryForList(sql, code);
+        if (rows.isEmpty()) throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, missingMessage);
+        return rows.get(0);
     }
 }

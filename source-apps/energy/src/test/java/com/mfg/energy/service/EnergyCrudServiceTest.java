@@ -37,6 +37,7 @@ class EnergyCrudServiceTest {
     @Mock WorkshopUsageRepository workshopRepository;
     @Mock EnergyAlertRepository alertRepository;
     @Mock EnergyAlertService alertService;
+    @Mock EnergyEquipmentDirectory equipmentDirectory;
 
     @InjectMocks EnergyMeterService meterService;
     @InjectMocks EquipmentUsageService equipmentService;
@@ -82,6 +83,7 @@ class EnergyCrudServiceTest {
         usage.setOutputQty(new BigDecimal("3"));
         usage.setBaselinePeriodStartDate(LocalDate.of(2026, 8, 1));
         usage.setBaselinePeriodEndDate(LocalDate.of(2026, 8, 31));
+        when(equipmentDirectory.requireUsable("EQ-01")).thenReturn(new EnergyEquipmentDirectory.EquipmentOption("EQ-01", "装配线伺服压机", "WS-01", "RUNNING"));
         when(equipmentRepository.existsByEquipmentCodeIgnoreCaseAndStatDateAndStatHourAndEnergyType(
                 anyString(), any(LocalDate.class), nullable(Integer.class), anyString())).thenReturn(false);
         when(equipmentRepository.save(any(EquipmentUsage.class))).thenAnswer(call -> {
@@ -111,6 +113,17 @@ class EnergyCrudServiceTest {
         when(alertService.hasSource("EQUIPMENT", 2L)).thenReturn(false);
         equipmentService.delete(2L);
         verify(equipmentRepository).delete(created);
+    }
+
+    @Test
+    void equipmentUsageRequiresAnEamEquipmentRecord() {
+        EquipmentUsage usage = new EquipmentUsage();
+        usage.setEquipmentCode("EQ-MISSING");
+        usage.setEnergyValue(new BigDecimal("12"));
+        when(equipmentDirectory.requireUsable("EQ-MISSING")).thenThrow(BizException.of(
+                com.mfg.common.api.ErrorCode.MASTER_DATA_NOT_FOUND, "设备不存在或已报废，请从 EAM 设备台账选择有效设备"));
+
+        assertThrows(BizException.class, () -> equipmentService.create(usage));
     }
 
     @Test

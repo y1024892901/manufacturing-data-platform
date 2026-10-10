@@ -43,8 +43,6 @@ public class P3FlowService {
         db.update("UPDATE src_srm.srm_rfq SET status='AWARDED',winner_supplier_code=? WHERE id=?", quote.get("supplier_code"), id);
         db.update("UPDATE src_srm.srm_supplier_quote SET status=IF(id=?,'AWARDED','LOST') WHERE rfq_id=?", quoteId, id);
         long poId = db.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        events.publish("SRM.PURCHASE_ORDER.SENT", "srm", "wms", "PURCHASE_ORDER", poId,
-                Map.of("purchaseOrderNo", poNo, "rfqNo", rfq.get("rfq_no")));
         return one("SELECT * FROM src_srm.srm_purchase_order WHERE id=?", poId);
     }
 

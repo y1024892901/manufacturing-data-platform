@@ -3,6 +3,7 @@ package com.mfg.workflow.service;
 import com.mfg.workflow.dto.PendingTaskView;
 import com.mfg.workflow.dto.TimelineItem;
 import com.mfg.workflow.entity.WfActionLog;
+import com.mfg.workflow.entity.WfDefinition;
 import com.mfg.workflow.entity.WfInstance;
 import com.mfg.workflow.entity.WfNode;
 import com.mfg.workflow.entity.WfTask;
@@ -10,6 +11,8 @@ import com.mfg.workflow.repo.WfActionLogRepository;
 import com.mfg.workflow.repo.WfDefinitionRepository;
 import com.mfg.workflow.repo.WfInstanceRepository;
 import com.mfg.workflow.repo.WfTaskRepository;
+import com.mfg.security.repo.SysUserRepository;
+import com.mfg.security.config.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +38,77 @@ public class WorkflowQueryService {
     private final WfActionLogRepository logRepo;
     private final WfDefinitionRepository definitionRepo;
     private final WfTaskRepository taskRepo;
+    private final SysUserRepository userRepo;
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> userOptions() {
+        return userRepo.findByEnabledTrueOrderByIdAsc().stream()
+                .filter(user -> !Boolean.TRUE.equals(user.getDeleted()) && !Boolean.TRUE.equals(user.getLocked()))
+                .map(user -> {
+                    Map<String, Object> row = new java.util.LinkedHashMap<>();
+                    row.put("username", user.getUsername());
+                    row.put("realName", user.getRealName());
+                    row.put("deptCode", user.getDeptCode());
+                    row.put("positionName", user.getPositionName());
+                    row.put("roles", user.roleCodes());
+                    row.put("canApprove", user.roleCodes().contains("ADMIN") || user.getRoles().stream()
+                            .anyMatch(role -> role.permissionCodes().contains("WF:TASK:APPROVE")));
+                    return row;
+                }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> progress(Long instanceId) {
+        WfInstance instance = engine.getInstance(instanceId);
+        List<WfTask> tasks = taskRepo.findByInstanceIdOrderByNodeSeqAsc(instanceId);
+        List<WfTask> selected = tasks.stream().filter(task -> "SELECTED_ROUTE".equals(task.getSignMode())).toList();
+        List<Map<String, Object>> steps = new java.util.ArrayList<>();
+        if (!selected.isEmpty()) {
+            for (WfTask task : selected) steps.add(step(task.getNodeSeq(), task.getNodeName(), task.getApproverRole(), task));
+        } else {
+            WfDefinition definition = definitionRepo.findById(instance.getDefinitionId()).orElseThrow();
+            for (WfNode node : definition.getNodes()) {
+                WfTask latest = tasks.stream().filter(task -> node.getNodeSeq().equals(task.getNodeSeq()))
+                        .max(java.util.Comparator.comparing(WfTask::getId)).orElse(null);
+                steps.add(step(node.getNodeSeq(), node.getNodeName(), node.getApproverRole(), latest));
+            }
+        }
+        var me = CurrentUser.get();
+        Long myTaskId = me.hasPermission("WF:TASK:APPROVE") ? tasks.stream()
+                .filter(WfTask::isPending)
+                .filter(task -> task.getAssignedUser() == null ? me.hasRole(task.getApproverRole())
+                        : me.getUsername().equals(task.getAssignedUser()))
+                .map(WfTask::getId).findFirst().orElse(null) : null;
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("instanceId", instanceId);
+        result.put("instanceNo", instance.getInstanceNo());
+        result.put("bizType", instance.getBizType());
+        result.put("bizNo", instance.getBizNo());
+        result.put("bizTitle", instance.getBizTitle());
+        result.put("status", instance.getStatus());
+        result.put("submitter", instance.getSubmitter());
+        result.put("submittedAt", instance.getSubmittedAt());
+        result.put("currentNodeSeq", instance.getCurrentNodeSeq());
+        result.put("steps", steps);
+        result.put("events", timeline(instanceId));
+        result.put("myTaskId", myTaskId);
+        return result;
+    }
+
+    private Map<String, Object> step(Integer sequence, String name, String role, WfTask task) {
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("nodeSeq", sequence);
+        result.put("nodeName", name);
+        result.put("approverRole", "FINANCE_SUPERVISOR".equals(role) ? "FIN_SUPERVISOR" : role);
+        result.put("assignedUser", task == null ? null : task.getAssignedUser());
+        result.put("assignedName", task == null || task.getAssignedUser() == null ? null : userRepo
+                .findByUsername(task.getAssignedUser()).map(user -> user.getRealName()).orElse(task.getAssignedUser()));
+        result.put("status", task == null ? "WAITING" : task.getTaskStatus());
+        result.put("opinion", task == null ? null : task.getOpinion());
+        result.put("finishedAt", task == null ? null : task.getFinishedAt());
+        result.put("taskId", task == null ? null : task.getId());
+        return result;
+    }
 
     /**
      * 我的待办（含业务信息，可直接渲染）。

@@ -127,6 +127,18 @@ public class WorkflowController {
 
     // ---------- 查询 ----------
 
+    @GetMapping("/users")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<Map<String, Object>>> users() {
+        return ApiResponse.ok(queryService.userOptions());
+    }
+
+    @GetMapping("/instances/{instanceId}/progress")
+    @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")
+    public ApiResponse<Map<String, Object>> progress(@PathVariable Long instanceId) {
+        return ApiResponse.ok(queryService.progress(instanceId));
+    }
+
     @Operation(summary = "审批时间轴", description = "完整展示谁在什么时候做了什么——演示的核心视觉元素")
     @GetMapping("/instances/{instanceId}/timeline")
     @PreAuthorize("hasAuthority('WF:INSTANCE:VIEW')")

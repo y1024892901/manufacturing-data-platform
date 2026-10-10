@@ -29,7 +29,8 @@ public class LoginAuditService {
             users.findByUsernameAndDeletedFalse(username).ifPresent(user -> {
                 int count = (user.getFailedLoginCount() == null ? 0 : user.getFailedLoginCount()) + 1;
                 user.setFailedLoginCount(count);
-                if (count >= LOCK_THRESHOLD) user.setLocked(true);
+                // 管理员是系统最后的恢复入口，禁止被密码错误自动锁死。
+                if (count >= LOCK_THRESHOLD && !user.roleCodes().contains("ADMIN")) user.setLocked(true);
                 users.save(user);
             });
         }

@@ -10,6 +10,7 @@ import com.mfg.workflow.entity.WfInstance;
 import com.mfg.workflow.service.ApprovalEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /** ECN 生命周期。实施动作由 EngineeringChangeChainService 处理，避免绕过主数据治理。 */
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EngineeringChangeService {
     private final EngineeringChangeRepository repo;
     private final ApprovalEngine approvalEngine;
+    private final JdbcTemplate jdbc;
 
     @Transactional
     public EngineeringChange create(EngineeringChange e) {
@@ -26,6 +28,7 @@ public class EngineeringChangeService {
         require(e.getProductCode(), "产品编码");
         require(e.getTargetType(), "变更目标类型");
         require(e.getTargetVersion(), "目标版本");
+        requirePublishedProduct(e.getProductCode());
         if (repo.existsByEcnNo(e.getEcnNo())) throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "变更通知编号已存在：" + e.getEcnNo());
         e.setStatus("DRAFT");
         e.setBomCode(blankToNull(e.getBomCode()));
@@ -46,6 +49,7 @@ public class EngineeringChangeService {
         require(input.getProductCode(), "产品编码");
         require(input.getTargetType(), "变更目标类型");
         require(input.getTargetVersion(), "目标版本");
+        requirePublishedProduct(input.getProductCode());
         e.setEcnTitle(input.getEcnTitle().trim());
         e.setProductCode(input.getProductCode().trim());
         e.setBomCode(blankToNull(input.getBomCode()));
@@ -86,6 +90,14 @@ public class EngineeringChangeService {
 
     private void require(String value, String label) {
         if (value == null || value.isBlank()) throw BizException.of(ErrorCode.PARAM_INVALID, label + "不能为空");
+    }
+
+    private void requirePublishedProduct(String productCode) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_plm.plm_md_product WHERE product_code=?", Integer.class, productCode.trim());
+        if (count == null || count == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "产品不在 PLM 已同步的 MDM 主数据中");
+        }
     }
 
     private String blankToNull(String value) {

@@ -8,8 +8,7 @@
 为定额考核、异常识别和碳排估算提供基础。
 
 它与 EAM 同属**设备域**（`meta_system.business_domain = '设备域'`，`owner_dept = '设备与能源中心'`），
-但职责不同：EAM 管设备的**健康**，能源管设备的**耗用**。两者通过设备编码关联——
-`energy_md_equipment` 就是 MDM 分发给能源系统的设备主数据只读副本。
+但职责不同：EAM 管设备的**健康**，能源管设备的**耗用**。设备档案由 EAM 作为权威来源，能源通过只读设备目录读取 EAM 台账并按编码关联；`energy_md_equipment` 虽有建表定义，但当前没有权威分发来源，不作为有效设备目录。
 
 当前交付覆盖 4 类业务台账的手工维护：仪表、设备能耗、车间能耗和能耗告警，
 均有列表、详情、新增、修改和删除接口及配套服务校验。自动采集、正式抄表审批、碳管理和运营报表仍未实现。
@@ -39,7 +38,7 @@
 | `service/` | 已使用（4 个） | 分别负责仪表、设备能耗、车间能耗和告警 CRUD、校验、单位能耗与偏差计算 |
 | `controller/` | 已使用（4 个） | 仪表、告警、设备能耗、车间能耗控制器，均提供列表、详情、新增、修改、删除路由 |
 | `workflow/` | **空** | 未接入审批。全库 `wf_definition` 的 `biz_type` 中没有能源相关类型 |
-| `integration/` | **空** | 不发出事件、不写 `mfg_ops.biz_outbox`。作为接收方，MDM 侧 `MasterDataDistributor.writeToEnergy()` **当前是空实现（`return 0;`）**，因此 `energy_md_equipment` 表建了但从未被写入 |
+| `integration/` | **空** | 不发出事件、不写 `mfg_ops.biz_outbox`。设备目录以只读方式消费 EAM 台账；`energy_md_equipment` 当前无写入者且不参与设备有效性校验 |
 | `query/` | **空** | 后端列表暂为排序后的全量读取；关键字筛选和分页在前端执行，尚无服务端分页和统计查询 |
 
 > 唯一有实质逻辑的地方是单位能耗：`energyValue.divide(outputQty, 6, RoundingMode.HALF_UP)`，

@@ -1,8 +1,116 @@
 package com.mfg.wms.service;
-import com.mfg.common.api.ErrorCode;import com.mfg.common.exception.BizException;import com.mfg.mdm.entity.Material;import com.mfg.mdm.repo.MaterialRepository;import com.mfg.mdm.service.MasterDataService;import com.mfg.security.config.CurrentUser;import com.mfg.wms.dto.StockTransactionCommand;import com.mfg.wms.entity.*;import com.mfg.wms.repo.*;import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import java.math.*;import java.time.LocalDate;
+
+import com.mfg.common.api.ErrorCode;
+import com.mfg.common.exception.BizException;
+import com.mfg.mdm.entity.Material;
+import com.mfg.mdm.repo.MaterialRepository;
+import com.mfg.mdm.service.MasterDataService;
+import com.mfg.security.config.CurrentUser;
+import com.mfg.wms.dto.StockTransactionCommand;
+import com.mfg.wms.entity.Inventory;
+import com.mfg.wms.entity.StockTransaction;
+import com.mfg.wms.entity.WarehouseLocation;
+import com.mfg.wms.repo.InventoryRepository;
+import com.mfg.wms.repo.StockTransactionRepository;
+import com.mfg.wms.repo.WarehouseLocationRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 /** 库存余额只能由事务驱动；禁止页面直接改数量。 */
-@Service @RequiredArgsConstructor public class InventoryService{private final InventoryRepository inventories;private final StockTransactionRepository txns;private final WarehouseLocationRepository locations;private final MaterialRepository materials;private final MasterDataService master;
- @Transactional public StockTransaction transact(StockTransactionCommand c){if(txns.existsByTxnNo(c.txnNo()))throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS,"库存流水号已存在");Material m=materials.findByMaterialCode(c.materialCode()).orElseThrow(()->BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND,"物料不存在："+c.materialCode()));master.assertConsumable(m,"WMS 库存事务");if(c.locationCode()!=null&&!c.locationCode().isBlank()){WarehouseLocation l=locations.findAll().stream().filter(x->c.locationCode().equals(x.getLocationCode())).findFirst().orElseThrow(()->BizException.notFound("库位",c.locationCode()));if(!Boolean.TRUE.equals(l.getAvailable()))throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"库位已禁用");}
- boolean inbound=c.txnType().startsWith("IN_");if(!inbound&&!c.txnType().startsWith("OUT_")&&!"ADJUST".equals(c.txnType()))throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"库存类型必须为 IN_*、OUT_* 或 ADJUST");Inventory inv=inventories.findByMaterialCodeAndWarehouseCodeAndLocationCodeAndBatchNo(c.materialCode(),c.warehouseCode(),c.locationCode(),c.batchNo()).orElseGet(Inventory::new);if(inv.getId()==null){inv.setMaterialCode(m.getMaterialCode());inv.setMaterialName(m.getMaterialName());inv.setWarehouseCode(c.warehouseCode());inv.setLocationCode(c.locationCode());inv.setBatchNo(c.batchNo());inv.setUnitCode(c.unitCode());}
- BigDecimal signed=inbound?c.txnQty():c.txnQty().negate();if(inv.getAvailableQty().add(signed).signum()<0)throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,"可用库存不足，禁止负库存出库");inv.setOnHandQty(inv.getOnHandQty().add(signed));inv.setAvailableQty(inv.getOnHandQty().subtract(inv.getAllocatedQty()));inv.setUnitCost(c.unitCost());inv.setTotalCost(inv.getOnHandQty().multiply(c.unitCost()).setScale(2,RoundingMode.HALF_UP));inventories.save(inv);StockTransaction t=new StockTransaction();t.setTxnNo(c.txnNo());t.setMaterialCode(c.materialCode());t.setWarehouseCode(c.warehouseCode());t.setLocationCode(c.locationCode());t.setBatchNo(c.batchNo());t.setTxnType(c.txnType());t.setDirection(inbound?"IN":"OUT");t.setTxnQty(c.txnQty());t.setUnitCode(c.unitCode());t.setUnitCost(c.unitCost());t.setSourceNo(c.sourceNo());t.setProdOrderNo(c.prodOrderNo());t.setWorkOrderNo(c.workOrderNo());t.setTxnDate(LocalDate.now());t.setOperatorCode(CurrentUser.usernameOrSystem());return txns.save(t);}
+@Service
+@RequiredArgsConstructor
+public class InventoryService {
+    private final InventoryRepository inventories;
+    private final StockTransactionRepository txns;
+    private final WarehouseLocationRepository locations;
+    private final MaterialRepository materials;
+    private final MasterDataService master;
+
+    @Transactional
+    public StockTransaction transact(StockTransactionCommand command) {
+        if (txns.existsByTxnNo(command.txnNo())) {
+            throw BizException.of(ErrorCode.MASTER_DATA_ALREADY_EXISTS, "库存流水号已存在");
+        }
+
+        Material material = materials.findByMaterialCode(command.materialCode())
+                .orElseThrow(() -> BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND,
+                        "物料不存在：" + command.materialCode()));
+        master.assertConsumable(material, "WMS 库存事务");
+
+        if (command.locationCode() != null && !command.locationCode().isBlank()) {
+            WarehouseLocation location = locations.findByLocationCode(command.locationCode())
+                    .orElseThrow(() -> BizException.notFound("库位", command.locationCode()));
+            if (!Boolean.TRUE.equals(location.getAvailable())) {
+                throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "库位已禁用");
+            }
+            if (!Objects.equals(location.getWarehouseCode(), command.warehouseCode())) {
+                throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "库位不属于所选仓库");
+            }
+        }
+
+        boolean inbound = command.txnType().startsWith("IN_");
+        if (!inbound && !command.txnType().startsWith("OUT_") && !"ADJUST".equals(command.txnType())) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,
+                    "库存类型必须为 IN_*、OUT_* 或 ADJUST");
+        }
+
+        Inventory inventory = inventories.findForUpdate(command.materialCode(), command.warehouseCode(),
+                        command.locationCode(), command.batchNo())
+                .orElseGet(() -> newInventory(material, command));
+        BigDecimal signed = inbound ? command.txnQty() : command.txnQty().negate();
+        BigDecimal currentAvailable = zero(inventory.getAvailableQty());
+        if (signed.signum() < 0 && currentAvailable.compareTo(command.txnQty()) < 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "可用库存不足，禁止负库存出库");
+        }
+
+        inventory.setOnHandQty(zero(inventory.getOnHandQty()).add(signed));
+        // 可用量单独维护；不能从在库量反推，否则会把冻结库存重新算成可用库存。
+        inventory.setAvailableQty(currentAvailable.add(signed));
+        inventory.setUnitCost(command.unitCost());
+        inventory.setTotalCost(inventory.getOnHandQty().multiply(command.unitCost())
+                .setScale(2, RoundingMode.HALF_UP));
+        inventories.save(inventory);
+
+        StockTransaction transaction = new StockTransaction();
+        transaction.setTxnNo(command.txnNo());
+        transaction.setMaterialCode(command.materialCode());
+        transaction.setWarehouseCode(command.warehouseCode());
+        transaction.setLocationCode(command.locationCode());
+        transaction.setBatchNo(command.batchNo());
+        transaction.setTxnType(command.txnType());
+        transaction.setDirection(inbound ? "IN" : "OUT");
+        transaction.setTxnQty(command.txnQty());
+        transaction.setUnitCode(command.unitCode());
+        transaction.setUnitCost(command.unitCost());
+        transaction.setSourceNo(command.sourceNo());
+        transaction.setProdOrderNo(command.prodOrderNo());
+        transaction.setWorkOrderNo(command.workOrderNo());
+        transaction.setTxnDate(LocalDate.now());
+        transaction.setOperatorCode(CurrentUser.usernameOrSystem());
+        return txns.save(transaction);
+    }
+
+    private Inventory newInventory(Material material, StockTransactionCommand command) {
+        Inventory inventory = new Inventory();
+        inventory.setMaterialCode(material.getMaterialCode());
+        inventory.setMaterialName(material.getMaterialName());
+        inventory.setWarehouseCode(command.warehouseCode());
+        inventory.setLocationCode(command.locationCode());
+        inventory.setBatchNo(command.batchNo());
+        inventory.setUnitCode(command.unitCode());
+        inventory.setOnHandQty(BigDecimal.ZERO);
+        inventory.setAllocatedQty(BigDecimal.ZERO);
+        inventory.setAvailableQty(BigDecimal.ZERO);
+        inventory.setFrozenQty(BigDecimal.ZERO);
+        return inventory;
+    }
+
+    private BigDecimal zero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
 }

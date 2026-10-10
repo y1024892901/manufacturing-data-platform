@@ -60,6 +60,7 @@ public class SrmRecordCrudService {
         requireWritable(kind);
         Map<String, Object> values = toColumns(body);
         validate(kind, values);
+        validateMasterReferences(kind, values, true);
         checkBusinessNumberUnique(kind, values);
         if ("quotes".equals(kind) && exists(
                 "SELECT COUNT(*) FROM src_srm.srm_supplier_quote WHERE rfq_id=? AND supplier_code=?",
@@ -108,6 +109,14 @@ public class SrmRecordCrudService {
         Map<String, Object> candidate = new HashMap<>(before);
         candidate.putAll(changes);
         validate(kind, candidate);
+        validateMasterReferences(kind, candidate, false);
+        if ("purchase-orders".equals(kind)) {
+            if (changes.containsKey("supplier_code")) changes.put("supplier_name", candidate.get("supplier_name"));
+            if (changes.containsKey("material_code")) {
+                changes.put("material_name", candidate.get("material_name"));
+                changes.put("unit_code", candidate.get("unit_code"));
+            }
+        }
         if ("purchase-orders".equals(kind)
                 && (changes.containsKey("order_qty") || changes.containsKey("unit_price"))) {
             java.math.BigDecimal quantity = new java.math.BigDecimal(String.valueOf(candidate.get("order_qty")));
@@ -183,6 +192,61 @@ public class SrmRecordCrudService {
                     throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "采购订单下达后才能登记发货通知");
             }
         }
+    }
+
+    /** Validate business references against the latest MDM copies distributed to SRM. */
+    private void validateMasterReferences(String kind, Map<String, Object> values, boolean creating) {
+        if (Set.of("rfqs", "purchase-orders").contains(kind)) {
+            Object code = values.get("material_code");
+            if (code != null) {
+                Map<String, Object> material = masterRow(
+                        "SELECT material_name,COALESCE(purchase_unit_code,base_unit_code) unit_code " +
+                                "FROM src_srm.srm_md_material WHERE material_code=?",
+                        String.valueOf(code), "物料尚未同步到 SRM，请先完成主数据分发");
+                if ("purchase-orders".equals(kind)) {
+                    values.put("material_name", material.get("material_name"));
+                    values.put("unit_code", material.get("unit_code"));
+                }
+            }
+        }
+
+        if (Set.of("quotes", "purchase-orders").contains(kind)) {
+            Object code = values.get("supplier_code");
+            if (code != null) {
+                Map<String, Object> supplier = masterRow(
+                        "SELECT supplier_name FROM src_srm.srm_md_supplier WHERE supplier_code=?",
+                        String.valueOf(code), "供应商尚未同步到 SRM，请先完成主数据分发");
+                if ("purchase-orders".equals(kind)) values.put("supplier_name", supplier.get("supplier_name"));
+            }
+        }
+
+        if ("asns".equals(kind)) {
+            Object orderNo = values.get("purchase_order_no");
+            if (orderNo != null) {
+                Map<String, Object> order = masterRow(
+                        "SELECT supplier_code,material_code,order_qty,received_qty,order_status " +
+                                "FROM src_srm.srm_purchase_order WHERE purchase_order_no=?",
+                        String.valueOf(orderNo), "关联采购订单不存在");
+                if (!Set.of("SENT", "PARTIAL").contains(String.valueOf(order.get("order_status")))) {
+                    throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "采购订单下达后才能登记发货通知");
+                }
+                for (String field : List.of("supplier_code", "material_code")) {
+                    Object supplied = values.get(field);
+                    Object expected = order.get(field);
+                    if (supplied != null && !String.valueOf(expected).equals(String.valueOf(supplied))) {
+                        throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE,
+                                "发货通知中的供应商和物料必须与关联采购订单一致");
+                    }
+                    if (creating || supplied == null) values.put(field, expected);
+                }
+            }
+        }
+    }
+
+    private Map<String, Object> masterRow(String sql, String key, String notFoundMessage) {
+        List<Map<String, Object>> rows = db.queryForList(sql, key);
+        if (rows.isEmpty()) throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, notFoundMessage);
+        return rows.get(0);
     }
 
     private long parseId(Object value, String label) {

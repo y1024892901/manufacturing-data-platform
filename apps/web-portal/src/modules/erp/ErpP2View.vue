@@ -263,6 +263,8 @@ const message = (error: unknown, fallback: string) => error instanceof Error && 
 const unitLabel = (value: unknown) => mdmUnits.value.find(item => item.value === String(value ?? ''))?.label || zh(value)
 const rowValue = (row: Record<string, any>, key: string) => {
   if (row[key] !== undefined) return row[key]
+  // SalesOrder exposes its persisted order_status column as the Java property `status`.
+  if (key === 'order_status' && row.status !== undefined) return row.status
   const camel = key.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase())
   return row[camel]
 }

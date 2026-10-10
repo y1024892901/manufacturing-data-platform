@@ -59,7 +59,15 @@ public class CrmRecordService {
     @Transactional(readOnly=true)
     public Map<String,Object> get(String kind,long id) {
         Map<String,Object> row=load(spec(kind),id);
-        if("quotations".equals(kind))row.put("lines",db.queryForList("SELECT line_no,product_code,product_name,qty,unit_code,standard_price,sales_price,standard_cost FROM src_crm.crm_quotation_line WHERE quotation_id=? ORDER BY line_no",id));
+        if("leads".equals(kind)) {
+            row.put("follows",db.queryForList("SELECT f.id,f.follow_type,f.content,f.next_follow_at,f.follow_user,COALESCE(u.real_name,f.follow_user) AS follow_user_name,f.follow_at FROM src_crm.crm_lead_follow f LEFT JOIN mfg_auth.sys_user u ON u.username=f.follow_user WHERE f.lead_id=? ORDER BY f.follow_at DESC,f.id DESC",id));
+            row.put("assignments",db.queryForList("SELECT a.id,a.from_user,COALESCE(fu.real_name,a.from_user) AS from_user_name,a.to_user,COALESCE(tu.real_name,a.to_user) AS to_user_name,a.reason,a.assigned_by,COALESCE(au.real_name,a.assigned_by) AS assigned_by_name,a.assigned_at FROM src_crm.crm_lead_assignment a LEFT JOIN mfg_auth.sys_user fu ON fu.username=a.from_user LEFT JOIN mfg_auth.sys_user tu ON tu.username=a.to_user LEFT JOIN mfg_auth.sys_user au ON au.username=a.assigned_by WHERE a.lead_id=? ORDER BY a.assigned_at DESC,a.id DESC",id));
+        }
+        if("quotations".equals(kind)){
+            List<Map<String,Object>> customer=db.queryForList("SELECT customer_name,short_name AS customer_short_name,customer_type,customer_level,industry,region,contact_person,contact_phone FROM src_mdm.md_customer WHERE customer_code=?",row.get("customer_code"));
+            if(!customer.isEmpty())row.putAll(customer.get(0));
+            row.put("lines",db.queryForList("SELECT line_no,product_code,product_name,qty,unit_code,standard_price,sales_price,standard_cost FROM src_crm.crm_quotation_line WHERE quotation_id=? ORDER BY line_no",id));
+        }
         if("contracts".equals(kind))row.put("payment_plans",db.queryForList("SELECT period_no,due_date,plan_ratio,plan_amount,received_amount,status FROM src_crm.crm_payment_plan WHERE contract_id=? ORDER BY period_no",id));
         return row;
     }
@@ -209,10 +217,12 @@ public class CrmRecordService {
         for(Object item:items) {
             if(!(item instanceof Map<?,?> raw)) throw BizException.of(ErrorCode.PARAM_INVALID,"报价明细格式错误");
             @SuppressWarnings("unchecked") Map<String,Object> line=(Map<String,Object>)raw;
+            line=new HashMap<>(line);
             String product=string(line,"productCode");
             if(product==null)throw BizException.of(ErrorCode.PARAM_INVALID,"报价明细必须选择产品");
-            Integer published=db.queryForObject("SELECT COUNT(*) FROM src_mdm.md_product WHERE product_code=? AND status='PUBLISHED'",Integer.class,product);
-            if(published==null||published==0)throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED,"报价产品未发布："+product);
+            List<Map<String,Object>> published=db.queryForList("SELECT product_code,product_name,unit_code FROM src_mdm.md_product WHERE product_code=? AND status='PUBLISHED' LIMIT 1",product);
+            if(published.isEmpty())throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED,"报价产品【"+product+"】不存在或尚未发布，请从已发布产品列表中选择");
+            line.put("productCode",published.get(0).get("product_code"));line.put("productName",published.get(0).get("product_name"));if(string(line,"unitCode")==null)line.put("unitCode",published.get(0).get("unit_code"));
             BigDecimal qty=decimal(line,"qty"),price=decimal(line,"salesPrice"),base=decimal(line,"standardPrice"),unitCost=decimal(line,"standardCost");
             if(qty.signum()<=0)throw BizException.of(ErrorCode.PARAM_INVALID,"报价数量必须大于0");
             amount=amount.add(qty.multiply(price));cost=cost.add(qty.multiply(unitCost));standard=standard.add(qty.multiply(base));

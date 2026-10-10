@@ -3,8 +3,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
-import { zh, zhKey } from '../../shared/display'
+import { zhKey } from '../../shared/display'
 import { showErrorDialog } from '../../shared/errorDialog'
+import { loadPlmProducts, plmLabel, type PlmProductOption } from './plmOptions'
 
 type Field = { key: string; db: string; label: string; required?: boolean; type?: 'select' | 'date' | 'textarea'; options?: string[]; placeholder?: string }
 type Config = { title: string; subtitle: string; releasable: boolean; fields: Field[] }
@@ -82,6 +83,7 @@ const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 const form = reactive<Record<string, any>>({})
+const products = ref<PlmProductOption[]>([])
 
 async function load() {
   loading.value = true
@@ -182,7 +184,13 @@ async function release(row: Record<string, any>) {
 }
 
 watch(() => props.kind, () => { page.value = 1; keyword.value = ''; void load() })
-onMounted(() => { void load() })
+onMounted(async () => {
+  if (cfg.value.fields.some(field => field.key === 'productCode')) {
+    try { products.value = await loadPlmProducts() }
+    catch (error: any) { showErrorDialog(error?.message, '加载MDM产品选项失败') }
+  }
+  await load()
+})
 </script>
 
 <template>
@@ -195,9 +203,9 @@ onMounted(() => { void load() })
       <div class="toolbar"><el-input v-model="keyword" clearable placeholder="输入编码或名称" @keyup.enter="search"/><el-button @click="search">查询</el-button></div>
       <el-table :data="rows" v-loading="loading" stripe>
         <el-table-column v-for="field in tableFields" :key="field.db" :prop="field.db" :label="field.label" min-width="130" show-overflow-tooltip>
-          <template #default="{ row }">{{ zh(row[field.db]) }}</template>
+          <template #default="{ row }">{{ plmLabel(row[field.db]) }}</template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="105"><template #default="{ row }"><el-tag :type="row.status === 'RELEASED' || row.status === 'ACTIVE' ? 'success' : 'info'">{{ zh(row.status) }}</el-tag></template></el-table-column>
+        <el-table-column prop="status" label="状态" width="105"><template #default="{ row }"><el-tag :type="row.status === 'RELEASED' || row.status === 'ACTIVE' ? 'success' : 'info'">{{ plmLabel(row.status) }}</el-tag></template></el-table-column>
         <el-table-column label="操作" width="270" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="view(row)">详情</el-button>
@@ -214,8 +222,11 @@ onMounted(() => { void load() })
       <el-form label-position="top"><el-row :gutter="16">
         <el-col v-for="field in cfg.fields" :key="field.key" :span="field.type === 'textarea' ? 24 : 12">
           <el-form-item :label="field.label + (field.required ? '' : '（选填）')" :required="field.required">
-            <el-select v-if="field.type === 'select'" v-model="form[field.key]" clearable style="width:100%">
-              <el-option v-for="option in field.options" :key="option" :label="zh(option)" :value="option"/>
+            <el-select v-if="field.key === 'productCode'" v-model="form[field.key]" clearable filterable style="width:100%" placeholder="搜索已同步的MDM产品">
+              <el-option v-for="item in products" :key="item.value" :label="item.label" :value="item.value"/>
+            </el-select>
+            <el-select v-else-if="field.type === 'select'" v-model="form[field.key]" clearable style="width:100%">
+              <el-option v-for="option in field.options" :key="option" :label="plmLabel(option)" :value="option"/>
             </el-select>
             <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" value-format="YYYY-MM-DD" clearable style="width:100%"/>
             <el-input v-else-if="field.type === 'textarea'" v-model="form[field.key]" type="textarea" :rows="3" maxlength="1000" show-word-limit/>
@@ -228,16 +239,23 @@ onMounted(() => { void load() })
 
     <el-drawer v-model="detailDialog" :title="`${cfg.title}详情`" size="620px">
       <el-descriptions v-if="selectedRow" :column="1" border>
-        <el-descriptions-item v-for="field in detailFields" :key="field.db" :label="field.label">{{ zh(selectedRow[field.db]) }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ zh(selectedRow.status) }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ zh(selectedRow.created_at) }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ zh(selectedRow.updated_at) }}</el-descriptions-item>
-        <el-descriptions-item v-for="key in ['created_by', 'released_by', 'released_at']" :key="key" :label="zhKey(key)">{{ zh(selectedRow[key]) }}</el-descriptions-item>
+        <el-descriptions-item v-for="field in detailFields" :key="field.db" :label="field.label">{{ plmLabel(selectedRow[field.db]) }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ plmLabel(selectedRow.status) }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ plmLabel(selectedRow.created_at) }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ plmLabel(selectedRow.updated_at) }}</el-descriptions-item>
+        <el-descriptions-item v-for="key in ['created_by', 'released_by', 'released_at']" :key="key" :label="zhKey(key)">{{ plmLabel(selectedRow[key]) }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
   </section>
 </template>
 
 <style scoped>
-.catalog-page{max-width:1480px;margin:0 auto}.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:17px}.page-head span{color:#3775d6;font-size:10px;font-weight:800;letter-spacing:1.4px}.page-head h1{margin:6px 0;color:#243d5d;font-size:25px}.page-head p{color:#8291a4;font-size:12px}.toolbar{display:flex;gap:8px;margin-bottom:14px}.toolbar .el-input{width:280px}
+.catalog-page{max-width:var(--vyre-layout-content-max);margin:0 auto;color:var(--vyre-content-primary)}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--vyre-space-4);margin-bottom:var(--vyre-space-4)}
+.page-head span{color:var(--workspace-accent);font-size:var(--vyre-font-size-xs);font-weight:var(--vyre-font-weight-semibold);letter-spacing:.08em}
+.page-head h1{margin:var(--vyre-space-2) 0;color:var(--workspace-ink);font-size:var(--vyre-font-size-xl)}
+.page-head p{color:var(--workspace-muted);font-size:var(--vyre-font-size-sm)}
+.toolbar{display:flex;gap:var(--vyre-space-2);margin-bottom:var(--vyre-space-3)}
+.toolbar .el-input{width:min(100%,calc(var(--vyre-space-64) * 6))}
+@media (max-width:720px){.page-head{align-items:flex-start;flex-direction:column}}
 </style>

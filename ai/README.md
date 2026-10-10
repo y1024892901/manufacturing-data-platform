@@ -27,17 +27,15 @@ Copy-Item ai/.env.example ai/.env
 uv sync --project ai
 ```
 
-分别在两个终端启动服务：
+统一启动（一个终端同时管理 MCP 和 AI API）：
 
 ```powershell
-# 终端 1：MCP Streamable HTTP，http://127.0.0.1:8001/mcp
-uv run --project ai python -m ai.mcp_server.server
+uv run --project ai python ai/start.py
 ```
 
-```powershell
-# 终端 2：AI 问答 API，http://127.0.0.1:8000
-uv run --project ai python -m ai.api
-```
+入口文件为 `ai/start.py`，也可在 IDEA/PyCharm 中使用 `ai/.venv/Scripts/python.exe` 直接运行此文件，无需指定工作目录。先启动 MCP，再启动 AI API；任一服务退出时会停止另一服务。按 `Ctrl+C` 一起停止本次启动的服务。端口被占用会报错，不会关闭已有服务。不要再同时运行旧的两个启动命令。
+
+此入口不启动 MySQL、Java 或 Vue，也不会覆盖 `.env` 或安装依赖。首次运行仍需执行上面的 `uv sync --project ai`。默认端口保持 API `8000`、MCP `8001`，沿用 `.env` 配置；`MCP_SERVER_URL` 必须指向本机 MCP 地址。启动检查只确认端口就绪，数据库连接和模型调用仍须单独验证。
 
 再按项目现有方式启动前端（`apps/web-portal` 下执行 `npm run dev`），登录后从左侧“AI 数据问答”进入。Vite 开发代理会把 `/ai-api/*` 转发到 8000 端口。
 

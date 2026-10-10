@@ -26,6 +26,7 @@ public class EnergyMeterService {
 
     private final EnergyMeterRepository repository;
     private final EquipmentUsageRepository usageRepository;
+    private final EnergyEquipmentDirectory equipmentDirectory;
 
     public List<EnergyMeter> list() { return repository.findAll(Sort.by(Sort.Direction.DESC, "id")); }
 
@@ -117,6 +118,9 @@ public class EnergyMeterService {
             if (meter.getParentMeterCode().equalsIgnoreCase(meter.getMeterCode())) throw BizException.badState("上级仪表不能指向自身");
             boolean parentExists = repository.findAll().stream().anyMatch(item -> item.getMeterCode().equalsIgnoreCase(meter.getParentMeterCode()));
             if (!parentExists) throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "上级仪表编码不存在");
+        }
+        if (meter.getEquipmentCode() != null) {
+            meter.setEquipmentCode(equipmentDirectory.requireUsable(meter.getEquipmentCode()).equipmentCode());
         }
     }
 

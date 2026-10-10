@@ -62,7 +62,15 @@ public class UserAdminService {
     }
 
     @Transactional public AdminUserView setEnabled(Long id, boolean enabled) { SysUser user = load(id); user.setEnabled(enabled); if (enabled) user.setFailedLoginCount(0); return AdminUserView.from(users.save(user)); }
-    @Transactional public AdminUserView setLocked(Long id, boolean locked) { SysUser user = load(id); user.setLocked(locked); if (!locked) user.setFailedLoginCount(0); return AdminUserView.from(users.save(user)); }
+    @Transactional public AdminUserView setLocked(Long id, boolean locked) {
+        SysUser user = load(id);
+        if (locked && user.roleCodes().contains("ADMIN")) {
+            throw BizException.conflict("管理员账号不可锁定，请改用停用或重置密码");
+        }
+        user.setLocked(locked);
+        if (!locked) user.setFailedLoginCount(0);
+        return AdminUserView.from(users.save(user));
+    }
     @Transactional public void resetPassword(Long id, String password) { SysUser user = load(id); user.setPasswordHash(encoder.encode(password)); user.setPasswordChangedAt(LocalDateTime.now()); user.setFailedLoginCount(0); user.setLocked(false); users.save(user); }
     @Transactional public AdminUserView setRoles(Long id, Set<Long> roleIds) { SysUser user = load(id); user.setRoles(new HashSet<>(roles.findAllById(roleIds))); if (user.getRoles().size() != roleIds.size()) throw BizException.of(ErrorCode.PARAM_INVALID, "包含不存在的角色"); return AdminUserView.from(users.save(user)); }
     @Transactional public AdminUserView setSystems(Long id, Set<String> requested) { validateSystems(requested); SysUser user = load(id); user.setSystems(new HashSet<>(requested)); return AdminUserView.from(users.save(user)); }

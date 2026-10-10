@@ -4,7 +4,7 @@ import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import http from '../../api/http'
 import { showErrorDialog } from '../errorDialog'
 import { zh, zhKey, zhQms } from '../display'
-import { loadMdmMaterials, loadMdmUnits, type MdmMaterialOption, type MdmUnitOption } from '../mdmOptions'
+import { loadMdmMaterials, loadMdmSuppliers, loadMdmUnits, loadMdmWarehouses, type MdmMaterialOption, type MdmUnitOption, type MdmOption } from '../mdmOptions'
 import TablePager from './TablePager.vue'
 import { p3Catalog, type P3Field } from '../p3Catalog'
 
@@ -26,6 +26,12 @@ const actionDialog = ref(false)
 const actionKind = ref('')
 const actionRecord = ref<any>(null)
 const actionForm = reactive<Record<string, any>>({})
+const specialDialog = ref(false)
+const specialMode = ref('')
+const specialRecord = ref<any>(null)
+const specialSaving = ref(false)
+const specialForm = reactive<Record<string, any>>({})
+const rfqQuoteOptions = ref<any[]>([])
 const countLines = ref<any[]>([])
 const countLineDialog = ref(false)
 const countLineEditingId = ref<number | null>(null)
@@ -42,6 +48,9 @@ const rfqOptions = ref<any[]>([])
 const purchaseOrderOptions = ref<any[]>([])
 const mdmMaterials = ref<MdmMaterialOption[]>([])
 const mdmUnits = ref<MdmUnitOption[]>([])
+const mdmSuppliers = ref<MdmOption[]>([])
+const mdmWarehouses = ref<MdmOption[]>([])
+const wmsLocations = ref<MdmOption[]>([])
 const sharedOptionsLoading = ref(false)
 
 function toSnake(value: string) { return value.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`) }
@@ -233,14 +242,23 @@ async function loadSharedMdmOptions() {
   const fieldKeys = cfg.value.fields.map(field => field.key)
   const needMaterials = fieldKeys.includes('materialCode') || (isWms.value && props.kind === 'counts')
   const needUnits = fieldKeys.includes('unitCode')
+  const needSuppliers = fieldKeys.includes('supplierCode') && !(isSrm.value && props.kind === 'onboarding')
+  const needWarehouses = ['warehouseCode', 'fromWarehouse', 'toWarehouse'].some(key => fieldKeys.includes(key))
+  const needLocations = isWms.value && ['locationCode', 'fromLocation', 'toLocation'].some(key => fieldKeys.includes(key))
   sharedOptionsLoading.value = true
   try {
-    const [materials, units] = await Promise.all([
+    const [materials, units, suppliers, warehouses, locations] = await Promise.all([
       needMaterials ? loadMdmMaterials() : Promise.resolve(mdmMaterials.value),
       needUnits ? loadMdmUnits() : Promise.resolve(mdmUnits.value),
+      needSuppliers ? loadMdmSuppliers() : Promise.resolve(mdmSuppliers.value),
+      needWarehouses ? loadMdmWarehouses() : Promise.resolve(mdmWarehouses.value),
+      needLocations ? http.get('/wms/locations', { params: { page: 1, size: 200 } }).then(response => (response.data.data?.content || []).filter((row: any) => row.available !== false).map((row: any) => ({ label: `${row.location_name || row.locationName || row.location_code || row.locationCode}（${row.location_code || row.locationCode}） · ${row.warehouse_name || row.warehouseName || row.warehouse_code || row.warehouseCode}${row.zone_code || row.zoneCode ? ` · ${row.zone_code || row.zoneCode}` : ''}`, value: String(row.location_code || row.locationCode) }))) : Promise.resolve(wmsLocations.value),
     ])
     if (needMaterials) mdmMaterials.value = materials
     if (needUnits) mdmUnits.value = units
+    if (needSuppliers) mdmSuppliers.value = suppliers
+    if (needWarehouses) mdmWarehouses.value = warehouses
+    if (needLocations) wmsLocations.value = locations
   } catch (error: any) {
     showErrorDialog(error?.message || '物料或单位主数据加载失败，请刷新后重试')
   } finally { sharedOptionsLoading.value = false }
@@ -249,6 +267,9 @@ async function loadSharedMdmOptions() {
 function fieldOptions(field: P3Field) {
   if (field.key === 'materialCode') return mdmMaterials.value.map(item => ({ label: item.label, value: item.value }))
   if (field.key === 'unitCode') return mdmUnits.value.map(item => ({ label: item.label, value: item.value }))
+  if (field.key === 'supplierCode') return mdmSuppliers.value
+  if (['warehouseCode', 'fromWarehouse', 'toWarehouse'].includes(field.key)) return mdmWarehouses.value
+  if (['locationCode', 'fromLocation', 'toLocation'].includes(field.key) && isWms.value) return wmsLocations.value
   if (props.kind === 'qualifications' && field.key === 'onboardingId')
     return onboardingOptions.value.map(row => ({ label: `${row.application_no} · ${row.supplier_name}`, value: String(row.id) }))
   if (props.kind === 'quotes' && field.key === 'rfqId')
@@ -521,26 +542,85 @@ async function qmsLifecycleAction(row: any) {
   }
 }
 
+async function openSpecial(row: any) {
+  if (props.system === 'srm' && props.kind === 'rfqs' && ['PUBLISHED', 'QUOTING'].includes(String(rowStatus(row)))) {
+    specialRecord.value = row
+    specialMode.value = 'supplier-quote'
+    Object.keys(specialForm).forEach(key => delete specialForm[key])
+    Object.assign(specialForm, { supplierCode: '', unitPrice: null, deliveryDate: '', note: '' })
+    if (!mdmSuppliers.value.length) {
+      try { mdmSuppliers.value = await loadMdmSuppliers() } catch (error: any) { showErrorDialog(error?.message || '供应商主数据加载失败'); return }
+    }
+    if (!mdmSuppliers.value.length) { showErrorDialog('没有已发布的供应商主数据，暂时无法登记报价'); return }
+    specialDialog.value = true
+    return
+  }
+  if (props.system === 'srm' && props.kind === 'rfqs' && rowStatus(row) === 'CLOSED') {
+    try {
+      const response = await http.get('/srm/quotes', { params: { page: 1, size: 200 } })
+      const quotes = response.data.data?.content || []
+      const matching = quotes.filter((quote: any) => Number(quote.rfq_id ?? quote.rfqId) === Number(row.id) && ['SUBMITTED', 'DRAFT'].includes(String(quote.status)))
+      const suppliers = mdmSuppliers.value.length ? mdmSuppliers.value : await loadMdmSuppliers()
+      mdmSuppliers.value = suppliers
+      rfqQuoteOptions.value = matching.map((quote: any) => {
+        const code = String(quote.supplier_code ?? quote.supplierCode ?? '')
+        const supplier = suppliers.find(item => item.value === code)
+        return { value: Number(quote.id), label: `${supplier?.label || code} · ${Number(quote.unit_price ?? quote.unitPrice ?? 0).toLocaleString('zh-CN')} 元 · ${quote.delivery_date ?? quote.deliveryDate ?? '未填写交期'}` }
+      })
+      if (!rfqQuoteOptions.value.length) { showErrorDialog('当前询价单没有可定标的供应商报价'); return }
+      specialRecord.value = row
+      specialMode.value = 'rfq-award'
+      Object.keys(specialForm).forEach(key => delete specialForm[key])
+      specialForm.quoteId = null
+      specialDialog.value = true
+    } catch (error: any) { showErrorDialog(error?.message || '供应商报价加载失败') }
+    return
+  }
+  if (props.system === 'srm' && props.kind === 'asns' && rowStatus(row) === 'SHIPPED') {
+    specialRecord.value = row
+    specialMode.value = 'asn-arrival'
+    Object.keys(specialForm).forEach(key => delete specialForm[key])
+    specialForm.warehouseCode = ''
+    try {
+      if (!mdmWarehouses.value.length) mdmWarehouses.value = await loadMdmWarehouses()
+      if (!mdmWarehouses.value.length) { showErrorDialog('没有已发布的仓库主数据，无法确认到货'); return }
+      specialDialog.value = true
+    } catch (error: any) { showErrorDialog(error?.message || '仓库主数据加载失败') }
+    return
+  }
+  await special(row)
+}
+
+async function saveSpecial() {
+  const row = specialRecord.value
+  if (!row) return
+  specialSaving.value = true
+  try {
+    if (specialMode.value === 'supplier-quote') {
+      if (!specialForm.supplierCode || Number(specialForm.unitPrice) < 0 || specialForm.unitPrice === null || !specialForm.deliveryDate) {
+        ElMessage.warning('请选择供应商，并填写有效单价和承诺交期')
+        return
+      }
+      await http.post('/srm/quotes', { rfqId: row.id, supplierCode: specialForm.supplierCode, unitPrice: Number(specialForm.unitPrice), deliveryDate: specialForm.deliveryDate, note: specialForm.note || undefined })
+      ElMessage.success('供应商报价已登记')
+    } else if (specialMode.value === 'rfq-award') {
+      if (!specialForm.quoteId) { ElMessage.warning('请选择中标报价'); return }
+      await http.post(`/srm/rfqs/${row.id}/award`, null, { params: { quoteId: specialForm.quoteId } })
+      ElMessage.success('询价定标完成，采购订单已生成')
+    } else if (specialMode.value === 'asn-arrival') {
+      if (!specialForm.warehouseCode) { ElMessage.warning('请选择收货仓库'); return }
+      await http.post(`/srm/asns/${row.id}/arrive`, null, { params: { warehouseCode: specialForm.warehouseCode } })
+      ElMessage.success('到货已确认，已生成仓储收货与待检单')
+    }
+    specialDialog.value = false
+    await load()
+  } catch (error: any) { showErrorDialog(error?.message || '业务操作失败') }
+  finally { specialSaving.value = false }
+}
+
 async function special(row: any) {
   try {
-    if (props.system === 'srm' && props.kind === 'rfqs') {
-      if (['PUBLISHED', 'QUOTING'].includes(String(rowStatus(row)))) {
-        const input = await ElMessageBox.prompt('按“供应商编码,单价,交付日期”填写，例如 SUP001,12.50,2026-12-20', '登记供应商报价')
-        const [supplierCode, price, deliveryDate] = input.value.split(',').map((value: string) => value.trim())
-        const unitPrice = Number(price)
-        if (!supplierCode || !Number.isFinite(unitPrice) || unitPrice < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate || '')) throw new Error('报价格式不正确，请按提示填写')
-        await http.post('/srm/quotes', { rfqId: row.id, supplierCode, unitPrice, deliveryDate })
-      } else {
-        const input = await ElMessageBox.prompt('请输入中标报价记录编号', '询价定标')
-        const quoteId = Number(input.value)
-        if (!Number.isInteger(quoteId) || quoteId < 1) throw new Error('报价记录编号必须是正整数')
-        await http.post(`/srm/rfqs/${row.id}/award`, null, { params: { quoteId } })
-      }
-    } else if (props.system === 'srm' && props.kind === 'asns') {
-      const input = await ElMessageBox.prompt('请输入收货仓库编码', '确认到货', { inputValue: 'WH01' })
-      if (!input.value.trim()) throw new Error('请填写收货仓库编码')
-      await http.post(`/srm/asns/${row.id}/arrive`, null, { params: { warehouseCode: input.value } })
-    } else if (props.system === 'srm' && props.kind === 'purchase-orders') {
+    if (props.system === 'srm' && props.kind === 'purchase-orders') {
       await ElMessageBox.confirm(`确认下达采购订单 ${row.purchase_order_no || row.purchaseOrderNo}？`, '下达采购订单', { type: 'warning', confirmButtonText: '确认下达', cancelButtonText: '取消' })
       await http.post(`/srm/purchase-orders/${row.id}/send`)
     } else if (isWms.value && props.kind === 'putaway') {
@@ -645,7 +725,7 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
 <template>
   <section>
     <div class="head">
-      <div><span>{{ isQms ? '质量管理业务中心' : isWms ? '仓储管理业务中心' : `${system.toUpperCase()}业务中心` }}</span><h1>{{ title }}</h1><p>{{ isWms ? '管理仓储单据、库存状态、批次追溯与库内作业；已过账的库存流水不可直接修改或删除。' : '质量单据、检验结论、整改闭环与来源追溯。' }}</p></div>
+      <div><span>{{ isQms ? '质量管理业务中心' : isWms ? '仓储管理业务中心' : isSrm ? '供应商协同业务中心' : '制造运营业务中心' }}</span><h1>{{ title }}</h1><p>{{ isWms ? '管理仓储单据、库存状态、批次追溯与库内作业；已过账的库存流水不可直接修改或删除。' : isQms ? '围绕来料检验、不合格处置与整改闭环，关联批次和来源单据。' : isSrm ? '承接供应商准入、寻源、采购订单与到货协同，供应商和物料均引用统一主数据。' : '维护业务记录、来源关系和状态进度，关键操作按单据规则流转。' }}</p></div>
       <div class="actions">
         <el-upload v-if="canImport && !isQms" :show-file-list="false" :auto-upload="false" accept=".csv" @change="importCsv"><el-button>导入CSV</el-button></el-upload>
         <el-button @click="exportCsv">导出当前页</el-button>
@@ -658,7 +738,6 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
         <el-select v-if="cfg.statuses?.length" v-model="status" placeholder="全部状态" clearable @change="page=1;load()" style="width:220px">
           <el-option v-for="item in cfg.statuses" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-input v-else v-model="status" placeholder="输入状态编码" clearable @keyup.enter="page=1;load()" />
         <el-button type="primary" @click="page=1;load()">查询</el-button>
         <el-button @click="keyword='';status='';page=1;load()">重置</el-button>
       </div>
@@ -673,7 +752,7 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
             <el-button v-if="canDelete(row)" link type="danger" @click="remove(row)">删除</el-button>
             <el-button v-if="qmsActionName(row) && ['capas','8d'].includes(kind)" link type="success" @click="qmsLifecycleAction(row)">{{ qmsActionName(row) }}</el-button>
             <el-button v-else-if="qmsActionName(row)" link type="success" @click="openAction(row)">{{ qmsActionName(row) }}</el-button>
-            <el-button v-if="specialName(row)" link @click="special(row)">{{ specialName(row) }}</el-button>
+            <el-button v-if="specialName(row)" link @click="openSpecial(row)">{{ specialName(row) }}</el-button>
             <el-dropdown v-if="transitionOptions(row).length" @command="(value:string)=>changeStatus(row,value)">
               <el-button link type="primary">状态操作</el-button>
               <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="item in transitionOptions(row)" :key="item.value" :command="item.value">{{ item.label }}</el-dropdown-item></el-dropdown-menu></template>
@@ -687,7 +766,7 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
     <el-dialog v-model="dialog" :title="formTitle" width="760">
       <el-form label-width="132px" class="form">
         <el-form-item v-for="field in cfg.fields" :key="field.key" :label="field.required ? field.label : `${field.label}（选填）`" :required="field.required">
-          <el-select v-if="field.type === 'select' || field.key === 'materialCode' || field.key === 'unitCode'" v-model="form[field.key]" clearable :placeholder="field.key === 'materialCode' ? '从统一物料主数据中选择' : field.key === 'unitCode' ? '从统一计量单位字典中选择' : `请选择${field.label}`" :disabled="fieldDisabled(field) || sharedOptionsLoading" style="width:100%" @change="srmFieldChanged(field)">
+        <el-select v-if="field.type === 'select' || ['materialCode','unitCode','supplierCode','warehouseCode','fromWarehouse','toWarehouse','locationCode','fromLocation','toLocation'].includes(field.key)" v-model="form[field.key]" clearable filterable :placeholder="field.key === 'materialCode' ? '从统一物料主数据中选择' : field.key === 'unitCode' ? '从统一计量单位字典中选择' : field.key === 'supplierCode' ? '从已发布供应商主数据中选择' : ['warehouseCode','fromWarehouse','toWarehouse'].includes(field.key) ? '从已发布仓库主数据中选择' : ['locationCode','fromLocation','toLocation'].includes(field.key) ? '从可用库位中选择' : `请选择${field.label}`" :disabled="fieldDisabled(field) || sharedOptionsLoading" style="width:100%" @change="srmFieldChanged(field)">
             <el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" />
           </el-select>
           <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" type="date" value-format="YYYY-MM-DD" :placeholder="`请选择${field.label}`" :disabled="fieldDisabled(field)" style="width:100%" />
@@ -713,6 +792,21 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
         <el-alert v-if="actionKind === 'rework-start'" title="确认开始执行该返工单？" type="info" :closable="false" />
       </el-form>
       <template #footer><el-button @click="actionDialog=false">取消</el-button><el-button type="primary" @click="runAction">确认</el-button></template>
+    </el-dialog>
+
+    <el-dialog v-model="specialDialog" :title="specialMode === 'supplier-quote' ? '登记供应商报价' : specialMode === 'rfq-award' ? '询价定标' : '确认到货'" width="560" destroy-on-close>
+      <el-form label-position="top">
+        <template v-if="specialMode === 'supplier-quote'">
+          <el-form-item label="询价单号"><el-input :model-value="specialRecord?.rfq_no || specialRecord?.rfqNo" disabled /></el-form-item>
+          <el-form-item label="供应商" required><el-select v-model="specialForm.supplierCode" filterable clearable style="width:100%" placeholder="搜索并选择已发布供应商"><el-option v-for="item in mdmSuppliers" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+          <el-form-item label="未税单价（元）" required><el-input-number v-model="specialForm.unitPrice" :min="0" :precision="4" style="width:100%" /></el-form-item>
+          <el-form-item label="承诺交货日期" required><el-date-picker v-model="specialForm.deliveryDate" type="date" value-format="YYYY-MM-DD" style="width:100%" placeholder="请选择承诺交货日期" /></el-form-item>
+          <el-form-item label="报价说明（选填）"><el-input v-model="specialForm.note" type="textarea" :rows="3" /></el-form-item>
+        </template>
+        <el-form-item v-else-if="specialMode === 'rfq-award'" label="中标报价" required><el-select v-model="specialForm.quoteId" filterable style="width:100%" placeholder="选择供应商、价格和交期"><el-option v-for="item in rfqQuoteOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+        <el-form-item v-else label="收货仓库" required><el-select v-model="specialForm.warehouseCode" filterable style="width:100%" placeholder="选择已发布仓库"><el-option v-for="item in mdmWarehouses" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="specialDialog=false">取消</el-button><el-button type="primary" :loading="specialSaving" @click="saveSpecial">确认</el-button></template>
     </el-dialog>
 
     <el-drawer v-model="drawer" :title="`${title}详情`" size="52%">
@@ -759,5 +853,19 @@ onMounted(() => { void load(); void loadSrmReferences(); void loadSharedMdmOptio
 </template>
 
 <style scoped>
-.head{display:flex;justify-content:space-between;align-items:end;margin-bottom:16px}.head span{color:#3976d5;font-size:11px}.head h1{margin:5px 0;color:#263f5c}.head p{color:#8391a4}.actions,.bar{display:flex;gap:8px}.bar{margin-bottom:14px}.bar .el-input{width:250px}.form{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.form :deep(.el-form-item:has(textarea)){grid-column:1/-1}
+.head { display: flex; align-items: end; justify-content: space-between; gap: var(--vyre-space-4); margin-bottom: var(--vyre-space-4); }
+.head span { color: var(--workspace-accent, var(--vyre-interactive-primary)); font-size: var(--vyre-font-size-xs); font-weight: 700; letter-spacing: .04em; }
+.head h1 { margin: var(--vyre-space-1) 0; color: var(--workspace-ink, var(--vyre-content-primary)); font-size: var(--vyre-font-size-2xl); font-weight: 750; }
+.head p { color: var(--workspace-muted, var(--vyre-content-secondary)); line-height: 1.6; }
+.actions, .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vyre-space-2); }
+.bar { margin-bottom: var(--vyre-space-3); }
+.bar .el-input { width: min(100%, 320px); }
+.form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--vyre-space-3); }
+.form :deep(.el-form-item:has(textarea)) { grid-column: 1 / -1; }
+@media (max-width: 680px) {
+  .head { align-items: stretch; flex-direction: column; gap: var(--vyre-space-3); }
+  .head h1 { font-size: var(--vyre-font-size-xl); }
+  .form { grid-template-columns: minmax(0, 1fr); }
+  .form :deep(.el-form-item:has(textarea)) { grid-column: auto; }
+}
 </style>

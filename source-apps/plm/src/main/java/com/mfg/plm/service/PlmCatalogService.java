@@ -23,6 +23,12 @@ public class PlmCatalogService {
     private final JdbcTemplate jdbc;
 
     @Transactional(readOnly = true)
+    public List<Map<String, Object>> publishedProducts() {
+        return jdbc.queryForList("SELECT product_code, product_name, product_model, lifecycle_status, master_version " +
+                "FROM src_plm.plm_md_product ORDER BY product_code LIMIT 2000");
+    }
+
+    @Transactional(readOnly = true)
     public Page<Map<String, Object>> page(String type, String keyword, int page, int size) {
         String table = table(type);
         String[] search = searchColumns(type);
@@ -52,6 +58,7 @@ public class PlmCatalogService {
     @Transactional
     public Map<String, Object> create(String type, Map<String, Object> x) {
         String me = CurrentUser.usernameOrSystem();
+        validateProductReference(type, x);
         try {
             switch (type) {
                 case "families" -> jdbc.update("INSERT INTO src_plm.plm_product_family(family_code,family_name,market_segment,owner_user,family_description,status) VALUES(?,?,?,?,?,?)",
@@ -73,6 +80,7 @@ public class PlmCatalogService {
     @Transactional
     public Map<String, Object> update(String type, Long id, Map<String, Object> x) {
         ensureEditable(type, id);
+        validateProductReference(type, x);
         try {
             int n = switch (type) {
                 case "families" -> jdbc.update("UPDATE src_plm.plm_product_family SET family_name=?,market_segment=?,owner_user=?,family_description=?,status=? WHERE id=?",
@@ -154,6 +162,20 @@ public class PlmCatalogService {
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM src_plm." + table(type) + " WHERE id=?", id);
         if (rows.isEmpty()) throw BizException.notFound("PLM数据", id);
         return rows.get(0);
+    }
+
+    private void validateProductReference(String type, Map<String, Object> input) {
+        if (!List.of("versions", "documents", "baselines").contains(type)) return;
+        String productCode = text(input, "productCode");
+        if (productCode == null) {
+            if ("baselines".equals(type)) throw BizException.of(ErrorCode.PARAM_INVALID, "产品编码不能为空");
+            return;
+        }
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_plm.plm_md_product WHERE product_code=?", Integer.class, productCode);
+        if (count == null || count == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "产品不在 PLM 已同步的 MDM 主数据中");
+        }
     }
 
     private String table(String type) {

@@ -56,6 +56,7 @@ public class EngineeringChangeChainService {
     @Transactional
     public Map<String, Object> createEcr(Map<String, Object> input) {
         String number = String.valueOf(req(input, "ecrNo"));
+        requirePublishedProduct(String.valueOf(req(input, "productCode")));
         jdbc.update("INSERT INTO src_plm.plm_ecr(ecr_no,ecr_title,product_code,problem_desc,change_reason,urgency,proposal,planned_effective_date,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
                 number, req(input, "ecrTitle"), req(input, "productCode"), req(input, "problemDesc"), req(input, "changeReason"),
                 value(input, "urgency", "NORMAL"), text(input, "proposal"), date(input, "plannedEffectiveDate"), CurrentUser.usernameOrSystem());
@@ -66,6 +67,7 @@ public class EngineeringChangeChainService {
     public Map<String, Object> updateEcr(Long id, Map<String, Object> input) {
         Map<String, Object> ecr = one("plm_ecr", id);
         requireDraft(ecr, "ECR");
+        requirePublishedProduct(String.valueOf(req(input, "productCode")));
         jdbc.update("UPDATE src_plm.plm_ecr SET ecr_title=?,product_code=?,problem_desc=?,change_reason=?,urgency=?,proposal=?,planned_effective_date=? WHERE id=?",
                 req(input, "ecrTitle"), req(input, "productCode"), req(input, "problemDesc"), req(input, "changeReason"),
                 value(input, "urgency", "NORMAL"), text(input, "proposal"), date(input, "plannedEffectiveDate"), id);
@@ -152,7 +154,7 @@ public class EngineeringChangeChainService {
         if (!"APPROVED".equals(String.valueOf(eco.get("status")))) throw BizException.conflict("ECO未批准");
         String number = "ECN-" + String.format("%05d", ecoId);
         jdbc.update("INSERT INTO src_plm.plm_ecn(ecr_id,eco_id,ecn_no,ecn_title,product_code,bom_code,change_type,target_type,target_version,change_content,change_reason,ecn_status,submitted_by) " +
-                        "SELECT ecr_id,id,?,?,product_code,target_code,'DESIGN',target_type,new_version,change_scope,'ECO审批通过','APPROVED',? FROM src_plm.plm_eco WHERE id=? " +
+                        "SELECT ecr_id,id,?,?,product_code,target_code,'DESIGN',target_type,new_version,change_scope,'ECO审批通过','DRAFT',? FROM src_plm.plm_eco WHERE id=? " +
                         "ON DUPLICATE KEY UPDATE eco_id=VALUES(eco_id)",
                 number, eco.get("eco_title"), CurrentUser.usernameOrSystem(), ecoId);
         return jdbc.queryForMap("SELECT * FROM src_plm.plm_ecn WHERE eco_id=?", ecoId);
@@ -218,6 +220,14 @@ public class EngineeringChangeChainService {
         List<Map<String, Object>> rows = jdbc.queryForList(sql, key);
         if (rows.isEmpty()) throw BizException.notFound("MDM主数据", key);
         return rows.get(0);
+    }
+
+    private void requirePublishedProduct(String productCode) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_plm.plm_md_product WHERE product_code=?", Integer.class, productCode);
+        if (count == null || count == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "产品不在 PLM 已同步的 MDM 主数据中");
+        }
     }
 
     private Map<String, Object> byNumber(String table, String column, String number) {

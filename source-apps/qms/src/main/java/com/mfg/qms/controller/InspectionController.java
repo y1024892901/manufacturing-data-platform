@@ -102,6 +102,12 @@ public class InspectionController {
         if (!TYPES.contains(inspection.getInspectionType())) throw BizException.of(ErrorCode.PARAM_INVALID, "请选择有效的检验类型");
         if (inspection.getMaterialCode() == null || inspection.getMaterialCode().isBlank())
             throw BizException.of(ErrorCode.PARAM_INVALID, "请填写物料编码");
+        inspection.setMaterialCode(inspection.getMaterialCode().trim());
+        String masterMaterialName = db.query("SELECT material_name FROM src_qms.qms_md_material WHERE material_code=?",
+                rs -> rs.next() ? rs.getString("material_name") : null, inspection.getMaterialCode());
+        if (masterMaterialName == null || masterMaterialName.isBlank())
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "物料未同步到 QMS，请先在 MDM 发布并分发物料主数据");
+        inspection.setMaterialName(masterMaterialName);
         if (inspection.getInspectedQty() == null || inspection.getInspectedQty().compareTo(BigDecimal.ZERO) <= 0)
             throw BizException.of(ErrorCode.PARAM_INVALID, "送检数量必须大于0");
         if (inspection.getSampleQty() != null && inspection.getSampleQty().compareTo(inspection.getInspectedQty()) > 0)

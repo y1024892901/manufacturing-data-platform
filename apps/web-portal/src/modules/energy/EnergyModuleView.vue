@@ -7,7 +7,7 @@ import { zh } from '../../shared/display'
 import { loadMdmUnits } from '../../shared/mdmOptions'
 
 type Option = { label: string; value: string }
-type Field = { key: string; label: string; type?: 'text' | 'number' | 'date' | 'textarea' | 'select'; required?: boolean; options?: Option[]; min?: number; max?: number; placeholder?: string }
+type Field = { key: string; label: string; type?: 'text' | 'number' | 'date' | 'textarea' | 'select' | 'equipment'; required?: boolean; options?: Option[]; min?: number; max?: number; placeholder?: string }
 type Column = { key: string; label: string; unit?: string }
 type PageConfig = { title: string; intro: string; endpoint: string; createText: string; fields: Field[]; columns: Column[] }
 
@@ -16,6 +16,7 @@ const energyTypes: Option[] = [
   { label: '蒸汽', value: 'STEAM' }, { label: '压缩空气', value: 'COMPRESSED_AIR' }, { label: '其他能源', value: 'OTHER' }
 ]
 const units = ref<Option[]>([])
+const equipmentOptions = ref<Option[]>([])
 const configurations: Record<string, PageConfig> = {
   meters: {
     title: '能源仪表与采集点', intro: '维护计量仪表、采集周期、归属对象和校准信息。', endpoint: '/energy/meters', createText: '新增仪表',
@@ -25,7 +26,7 @@ const configurations: Record<string, PageConfig> = {
       { key: 'unitCode', label: '计量单位', type: 'select', required: true },
       { key: 'meterKind', label: '计量层级', type: 'select', required: true, options: [{ label: '总表', value: 'MAIN' }, { label: '分表', value: 'SUBMETER' }] },
       { key: 'status', label: '使用状态', type: 'select', required: true, options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }, { label: '校准维护', value: 'MAINTENANCE' }] },
-      { key: 'workshopCode', label: '所属车间编码' }, { key: 'equipmentCode', label: '绑定设备编码' },
+      { key: 'workshopCode', label: '所属车间编码' }, { key: 'equipmentCode', label: '绑定设备', type: 'equipment' },
       { key: 'parentMeterCode', label: '上级仪表编码' }, { key: 'installLocation', label: '安装位置' },
       { key: 'multiplier', label: '仪表倍率', type: 'number', min: 0 }, { key: 'readIntervalMinutes', label: '采集间隔（分钟）', type: 'number', min: 1 },
       { key: 'calibrationDate', label: '最近校准日期', type: 'date' }, { key: 'warningThresholdPercent', label: '能耗预警偏差（%）', type: 'number', min: 0 },
@@ -37,7 +38,7 @@ const configurations: Record<string, PageConfig> = {
   equipment: {
     title: '设备能耗', intro: '按设备、日期和能源介质维护读数；录入基线与预警偏差后自动计算单耗并生成超限告警。', endpoint: '/energy/usages', createText: '登记设备能耗',
     fields: [
-      { key: 'equipmentCode', label: '设备编码', required: true }, { key: 'meterCode', label: '仪表编码' },
+      { key: 'equipmentCode', label: '设备', type: 'equipment', required: true }, { key: 'meterCode', label: '仪表编码' },
       { key: 'statDate', label: '统计日期', type: 'date', required: true }, { key: 'statHour', label: '统计小时（0 至 23）', type: 'number', min: 0, max: 23 },
       { key: 'energyType', label: '能源类型', type: 'select', required: true, options: energyTypes },
       { key: 'energyValue', label: '能耗量', type: 'number', required: true, min: 0 }, { key: 'unitCode', label: '计量单位', type: 'select', required: true },
@@ -140,6 +141,14 @@ async function openCreate() {
     try { units.value = (await loadMdmUnits()).map(unit => ({ label: unit.label, value: unit.value })) }
     catch { return }
   }
+  if (props.kind === 'equipment' || props.kind === 'meters') {
+    try { await loadEquipmentOptions() }
+    catch { return }
+    if (props.kind === 'equipment' && !equipmentOptions.value.length) {
+      ElMessage.warning('EAM 设备台账中没有可用设备，请先在设备管理中建档')
+      return
+    }
+  }
   editingId.value = null
   resetForm()
   dialog.value = true
@@ -147,6 +156,7 @@ async function openCreate() {
 
 async function openEdit(row: Record<string, any>) {
   try {
+    if (props.kind === 'equipment' || props.kind === 'meters') await loadEquipmentOptions()
     const { data } = await http.get(`${config.value.endpoint}/${row.id}`)
     editingId.value = data.data.id
     resetForm()
@@ -155,6 +165,14 @@ async function openEdit(row: Record<string, any>) {
   } catch {
     // HTTP 拦截器会直接显示中文错误弹框。
   }
+}
+
+async function loadEquipmentOptions() {
+  const { data } = await http.get('/energy/equipment-options')
+  equipmentOptions.value = (Array.isArray(data.data) ? data.data : []).map((item: Record<string, any>) => ({
+    value: item.equipmentCode,
+    label: [item.equipmentCode, item.equipmentName, item.workshopCode ? `车间 ${item.workshopCode}` : '', item.status ? zh(item.status) : ''].filter(Boolean).join(' · ')
+  }))
 }
 
 async function openDetail(row: Record<string, any>) {
@@ -209,6 +227,7 @@ function formatDate(value: unknown) {
 
 function displayValue(value: unknown, field?: Field) {
   if (value == null || value === '') return '—'
+  if (field?.type === 'equipment') return equipmentOptions.value.find(option => option.value === value)?.label || zh(value)
   const options = field ? fieldOptions(field) : []
   if (options.length) return options.find(option => option.value === value)?.label || zh(value)
   if (field?.type === 'date' || /^\d{4}-\d{2}-\d{2}/.test(String(value))) return formatDate(value)
@@ -220,14 +239,24 @@ function displayValue(value: unknown, field?: Field) {
 }
 
 function fieldByKey(key: string) { return config.value.fields.find(field => field.key === key) }
-function fieldOptions(field: Field) { return field.key === 'unitCode' ? units.value : field.options || [] }
+function fieldOptions(field: Field) { return field.type === 'equipment' ? equipmentOptions.value : field.key === 'unitCode' ? units.value : field.options || [] }
 function optionLabel(field: Field, value: unknown) { return fieldOptions(field).find(option => option.value === value)?.label || displayValue(value, field) }
 
-watch(() => props.kind, () => { page.value = 1; keyword.value = ''; load() })
+watch(() => props.kind, async () => {
+  page.value = 1
+  keyword.value = ''
+  if (props.kind === 'equipment' || props.kind === 'meters') {
+    try { await loadEquipmentOptions() } catch { /* HTTP 拦截器会显示错误弹窗。 */ }
+  }
+  await load()
+})
 watch(keyword, () => { page.value = 1 })
 onMounted(async () => {
   try { units.value = (await loadMdmUnits()).map(unit => ({ label: unit.label, value: unit.value })) }
   catch { /* HTTP 拦截器会直接显示中文错误弹框。 */ }
+  if (props.kind === 'equipment' || props.kind === 'meters') {
+    try { await loadEquipmentOptions() } catch { /* HTTP 拦截器会显示错误弹窗。 */ }
+  }
   await load()
 })
 </script>
@@ -264,7 +293,7 @@ onMounted(async () => {
         <el-row :gutter="16">
           <el-col v-for="field in config.fields" :key="field.key" :span="field.type === 'textarea' ? 24 : 12">
             <el-form-item :label="field.required ? `${field.label}（必填）` : `${field.label}（非必填）`" :required="field.required">
-              <el-select v-if="field.type === 'select'" v-model="form[field.key]" :clearable="!field.required" placeholder="请选择">
+              <el-select v-if="field.type === 'select' || field.type === 'equipment'" v-model="form[field.key]" :clearable="!field.required" filterable :placeholder="field.type === 'equipment' ? '搜索设备编码、名称或车间' : '请选择'">
                 <el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value"/>
               </el-select>
               <el-date-picker v-else-if="field.type === 'date'" v-model="form[field.key]" type="date" value-format="YYYY-MM-DD" format="YYYY年MM月DD日" :placeholder="`请选择${field.label}`"/>

@@ -29,6 +29,6 @@ public interface SysUserRepository extends JpaRepository<SysUser, Long> {
 
     List<SysUser> findByDeptCodeAndEnabledTrueOrderByIdAsc(String deptCode);
 
-    /** 演示用：列出全部演示账号，便于前端「账号切换」面板 */
-    List<SysUser> findByDemoAccountTrueAndEnabledTrueOrderByIdAsc();
+    /** 演示用：只列出可直接登录的演示账号，便于前端「账号切换」面板 */
+    List<SysUser> findByDemoAccountTrueAndEnabledTrueAndLockedFalseOrderByIdAsc();
 }

@@ -1,5 +1,7 @@
 package com.mfg.workflow.dto;
 
+import java.util.List;
+
 /**
  * 发起审批的入参。
  *
@@ -17,11 +19,17 @@ public record StartApprovalRequest(
         Long bizId,
         String bizNo,
         String bizTitle,
-        String bizSnapshot
+        String bizSnapshot,
+        List<String> approvers
 ) {
+
+    public StartApprovalRequest(String bizType, Long bizId, String bizNo,
+                                String bizTitle, String bizSnapshot) {
+        this(bizType, bizId, bizNo, bizTitle, bizSnapshot, null);
+    }
 
     public static StartApprovalRequest of(String bizType, Long bizId,
                                           String bizNo, String bizTitle) {
-        return new StartApprovalRequest(bizType, bizId, bizNo, bizTitle, null);
+        return new StartApprovalRequest(bizType, bizId, bizNo, bizTitle, null, null);
     }
 }

@@ -97,13 +97,25 @@ public class OpportunityController {
     }
 
     @PostMapping("/{id}/stage")
+    @Transactional
     @PreAuthorize("hasAuthority('CRM:OPPORTUNITY:STAGE')")
     public ApiResponse<Opportunity> stage(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         scope.requireVisible(ScopedResource.OPPORTUNITY, id);
-        String code = String.valueOf(body.getOrDefault("code", body.getOrDefault("reason", ""))).trim().toUpperCase();
+        Object requested = body.get("code");
+        if (requested == null || String.valueOf(requested).isBlank()) requested = body.get("reason");
+        String input = requested == null ? "" : String.valueOf(requested).trim();
+        String code = switch (input.toUpperCase(java.util.Locale.ROOT)) {
+            case "初步线索" -> "LEAD";
+            case "需求确认" -> "QUALIFY";
+            case "方案报价" -> "PROPOSAL";
+            case "商务谈判" -> "NEGOTIATE";
+            case "赢单" -> "WON";
+            case "丢单" -> "LOST";
+            default -> input.toUpperCase(java.util.Locale.ROOT);
+        };
         Opportunity opportunity = repo.findById(id).orElseThrow(() -> BizException.notFound("商机", id));
         if (!java.util.Set.of("LEAD", "QUALIFY", "PROPOSAL", "NEGOTIATE", "WON", "LOST").contains(code)) {
-            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "非法商机阶段");
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "请选择有效的商机阶段");
         }
         if ("WON".equals(code)) {
             Integer count = db.queryForObject("SELECT COUNT(*) FROM src_crm.crm_quotation WHERE opportunity_no=? AND status='EFFECTIVE'",
@@ -116,6 +128,7 @@ public class OpportunityController {
             db.update("UPDATE src_crm.crm_opportunity SET lost_reason=? WHERE id=?", reason, id);
         }
         opportunity.setStageCode(code);
+        opportunity.setStageUpdatedAt(java.time.LocalDateTime.now());
         return ApiResponse.ok(repo.save(opportunity));
     }
 

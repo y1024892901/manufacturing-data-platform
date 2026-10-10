@@ -11,6 +11,7 @@ import com.mfg.security.scope.ScopedQueryService;
 import com.mfg.security.scope.ScopedResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ public class WorkOrderService {
     private final WorkReportRepository reports;
     private final ScopedQueryService scope;
     private final ProdResultService prodResults;
+    private final JdbcTemplate jdbc;
 
     @Transactional(readOnly = true)
     public Page<WorkOrder> page(int page, int size) {
@@ -137,6 +139,51 @@ public class WorkOrderService {
         if (input.getPlanStartTime() != null && input.getPlanEndTime() != null
                 && input.getPlanEndTime().isBefore(input.getPlanStartTime())) {
             throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "计划完工时间不能早于计划开工时间");
+        }
+        validateProductionOrder(input);
+        validatePublishedRoutingOperation(input);
+    }
+
+    /** MES工单必须来自已下达的ERP生产订单，不能使用自由填写或错配的订单号。 */
+    private void validateProductionOrder(WorkOrder input) {
+        var orders = jdbc.queryForList(
+                "SELECT product_code, plan_qty, order_status FROM src_erp.erp_prod_order WHERE prod_order_no=?",
+                input.getProdOrderNo());
+        if (orders.isEmpty()) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_FOUND, "关联的 ERP 生产订单不存在");
+        }
+        var order = orders.get(0);
+        if (!"RELEASED".equals(String.valueOf(order.get("order_status")))) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "ERP 生产订单尚未下达，不能创建或修改 MES 工单");
+        }
+        if (!input.getProductCode().equals(String.valueOf(order.get("product_code")))) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "MES 工单产品必须与 ERP 生产订单一致");
+        }
+        Object plan = order.get("plan_qty");
+        if (plan instanceof BigDecimal orderQty && input.getPlanQty().compareTo(orderQty) > 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "工单计划数量不能超过 ERP 生产订单数量");
+        }
+        Integer materialCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_mes.mes_md_material WHERE material_code=?", Integer.class, input.getProductCode());
+        if (materialCount == null || materialCount == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "产品尚未同步到 MES 主数据副本，请先在 MDM 发布并分发");
+        }
+    }
+
+    /** 指定工艺路线时，工序必须来自 MDM 已发布并分发到 MES 的路线版本。 */
+    private void validatePublishedRoutingOperation(WorkOrder input) {
+        String routingCode = blankToNull(input.getRoutingCode());
+        String routingVersion = blankToNull(input.getRoutingVersion());
+        if (routingCode == null && routingVersion == null) return;
+        if (routingCode == null || routingVersion == null) {
+            throw BizException.of(ErrorCode.MASTER_DATA_INVALID_STATE, "选择工艺路线时，路线编码和版本必须同时填写");
+        }
+        Integer operationCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM src_mes.mes_md_routing_operation " +
+                        "WHERE routing_code=? AND routing_version=? AND op_seq=? AND operation_code=?",
+                Integer.class, routingCode, routingVersion, input.getOpSeq(), input.getOperationCode());
+        if (operationCount == null || operationCount == 0) {
+            throw BizException.of(ErrorCode.MASTER_DATA_NOT_PUBLISHED, "所选工序不在 MDM 已分发的工艺路线版本中");
         }
     }
 

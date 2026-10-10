@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import http from '../api/http'
 
-export interface DemoAccount { username: string; realName: string }
+export interface DemoAccount {
+  username: string; realName: string; deptCode?: string; deptName?: string
+  positionName?: string; roleNames?: string[]; systems?: string[]
+}
 export interface LoginUser {
   userId?: number
   username: string

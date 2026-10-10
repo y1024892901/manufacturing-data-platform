@@ -34,6 +34,45 @@ public class MdmOptionsController {
                 """));
     }
 
+    @GetMapping("/products")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<Map<String, Object>>> products() {
+        return ApiResponse.ok(jdbc.queryForList("""
+                SELECT product_code, product_name, product_model, unit_code,
+                       lifecycle_status, version_no
+                FROM src_mdm.md_product
+                WHERE status='PUBLISHED'
+                ORDER BY product_code
+                LIMIT 2000
+                """));
+    }
+
+    @GetMapping("/suppliers")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<Map<String, Object>>> suppliers() {
+        return ApiResponse.ok(jdbc.queryForList("""
+                SELECT supplier_code, supplier_name, short_name, supplier_level,
+                       supplier_type, supply_category, lead_time_days, qual_status,
+                       qual_expire_date, payment_terms, version_no
+                FROM src_mdm.md_supplier
+                WHERE status='PUBLISHED'
+                ORDER BY supplier_name, supplier_code
+                LIMIT 2000
+                """));
+    }
+
+    @GetMapping("/warehouses")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<Map<String, Object>>> warehouses() {
+        return ApiResponse.ok(jdbc.queryForList("""
+                SELECT warehouse_code, warehouse_name, factory_code, warehouse_type, version_no
+                FROM src_mdm.md_warehouse
+                WHERE status='PUBLISHED'
+                ORDER BY warehouse_name, warehouse_code
+                LIMIT 1000
+                """));
+    }
+
     @GetMapping("/units")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<Map<String, Object>>> units() {

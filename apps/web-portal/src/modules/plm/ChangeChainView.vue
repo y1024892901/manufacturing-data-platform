@@ -5,6 +5,7 @@ import http from '../../api/http'
 import TablePager from '../../shared/components/TablePager.vue'
 import { zh, zhKey } from '../../shared/display'
 import { showErrorDialog } from '../../shared/errorDialog'
+import { loadPlmProducts, plmLabel, type PlmProductOption } from './plmOptions'
 
 type ChainTab = 'ecrs' | 'ecos' | 'ecns'
 const tab = ref<ChainTab>('ecrs')
@@ -24,11 +25,12 @@ const selectedEcr = ref<Record<string, any> | null>(null)
 const impacts = ref<Record<string, any>[]>([])
 const form = reactive<Record<string, any>>({})
 const impactForm = reactive<Record<string, any>>({})
+const products = ref<PlmProductOption[]>([])
 
 const title = computed(() => ({ ecrs: '变更申请（ECR）', ecos: '变更命令（ECO）', ecns: '变更通知（ECN）' }[tab.value]))
 const serial = (prefix: string) => `${prefix}-${Date.now().toString().slice(-8)}`
 function displayValue(key: string, value: unknown) {
-  if (key === 'changeType') return value === 'PROCESS' ? '工艺变更' : value === 'DESIGN' ? '设计变更' : zh(value)
+  if (['changeType', 'targetType', 'status', 'ecnStatus', 'urgency', 'riskLevel'].includes(key)) return plmLabel(value)
   return zh(value)
 }
 function displayKey(key: string) {
@@ -221,7 +223,11 @@ async function ecnAction(row: Record<string, any>) {
 }
 
 watch(tab, () => { page.value = 1; keyword.value = ''; void load() })
-onMounted(() => { void load() })
+onMounted(async () => {
+  try { products.value = await loadPlmProducts() }
+  catch (error: any) { showErrorDialog(error?.message, '加载MDM产品选项失败') }
+  await load()
+})
 </script>
 
 <template>
@@ -239,21 +245,21 @@ onMounted(() => { void load() })
       <el-table :data="rows" v-loading="loading" stripe>
         <template v-if="tab === 'ecrs'">
           <el-table-column prop="ecr_no" label="变更申请编号" min-width="150"/><el-table-column prop="ecr_title" label="标题" min-width="170" show-overflow-tooltip/>
-          <el-table-column prop="product_code" label="产品编码" min-width="120"/><el-table-column prop="urgency" label="紧急程度" width="100"><template #default="{ row }">{{ zh(row.urgency) }}</template></el-table-column>
+          <el-table-column prop="product_code" label="产品编码" min-width="120"/><el-table-column prop="urgency" label="紧急程度" width="100"><template #default="{ row }">{{ plmLabel(row.urgency) }}</template></el-table-column>
           <el-table-column prop="planned_effective_date" label="计划生效日期" min-width="140"><template #default="{ row }">{{ zh(row.planned_effective_date) }}</template></el-table-column>
-          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ zh(row.status) }}</el-tag></template></el-table-column>
+          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ plmLabel(row.status) }}</el-tag></template></el-table-column>
         </template>
         <template v-else-if="tab === 'ecos'">
           <el-table-column prop="eco_no" label="变更命令编号" min-width="150"/><el-table-column prop="eco_title" label="标题" min-width="170" show-overflow-tooltip/>
-          <el-table-column prop="product_code" label="产品编码" min-width="120"/><el-table-column prop="target_type" label="目标类型" width="110"><template #default="{ row }">{{ zh(row.target_type) }}</template></el-table-column>
+          <el-table-column prop="product_code" label="产品编码" min-width="120"/><el-table-column prop="target_type" label="目标类型" width="110"><template #default="{ row }">{{ plmLabel(row.target_type) }}</template></el-table-column>
           <el-table-column prop="target_code" label="目标编码" min-width="120"/><el-table-column prop="new_version" label="目标版本" width="110"/>
-          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ zh(row.status) }}</el-tag></template></el-table-column>
+          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ plmLabel(row.status) }}</el-tag></template></el-table-column>
         </template>
         <template v-else>
           <el-table-column prop="ecnNo" label="变更通知编号" min-width="150"/><el-table-column prop="ecnTitle" label="标题" min-width="170" show-overflow-tooltip/>
-          <el-table-column prop="productCode" label="产品编码" min-width="120"/><el-table-column prop="targetType" label="目标类型" width="110"><template #default="{ row }">{{ zh(row.targetType) }}</template></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" min-width="120"/><el-table-column prop="targetType" label="目标类型" width="110"><template #default="{ row }">{{ plmLabel(row.targetType) }}</template></el-table-column>
           <el-table-column prop="bomCode" label="目标编码" min-width="120"/><el-table-column prop="targetVersion" label="目标版本" width="110"/>
-          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ zh(row.status) }}</el-tag></template></el-table-column>
+          <el-table-column prop="status" label="状态" width="120"><template #default="{ row }"><el-tag>{{ plmLabel(row.status) }}</el-tag></template></el-table-column>
         </template>
         <el-table-column label="操作" width="360" fixed="right">
           <template #default="{ row }">
@@ -285,8 +291,8 @@ onMounted(() => { void load() })
         <template v-if="tab === 'ecrs'">
           <el-col :span="12"><el-form-item label="变更申请编号"><el-input v-model="form.ecrNo" :disabled="Boolean(editingId)"/></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="标题"><el-input v-model="form.ecrTitle"/></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="产品编码"><el-input v-model="form.productCode"/></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="紧急程度（选填）"><el-select v-model="form.urgency" style="width:100%"><el-option v-for="o in ['LOW', 'NORMAL', 'HIGH', 'URGENT']" :key="o" :label="zh(o)" :value="o"/></el-select></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="产品"><el-select v-model="form.productCode" filterable style="width:100%" placeholder="搜索已同步的MDM产品"><el-option v-for="item in products" :key="item.value" :label="item.label" :value="item.value"/></el-select></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="紧急程度（选填）"><el-select v-model="form.urgency" style="width:100%"><el-option v-for="o in ['LOW', 'NORMAL', 'HIGH', 'URGENT']" :key="o" :label="plmLabel(o)" :value="o"/></el-select></el-form-item></el-col>
           <el-col :span="24"><el-form-item label="问题描述"><el-input v-model="form.problemDesc" type="textarea" :rows="3"/></el-form-item></el-col>
           <el-col :span="24"><el-form-item label="变更原因"><el-input v-model="form.changeReason" type="textarea" :rows="2"/></el-form-item></el-col>
           <el-col :span="24"><el-form-item label="建议方案（选填）"><el-input v-model="form.proposal" type="textarea" :rows="2"/></el-form-item></el-col>
@@ -303,7 +309,7 @@ onMounted(() => { void load() })
         <template v-else>
           <el-col :span="12"><el-form-item label="变更通知编号"><el-input v-model="form.ecnNo" :disabled="Boolean(editingId)"/></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="标题"><el-input v-model="form.ecnTitle"/></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="产品编码"><el-input v-model="form.productCode"/></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="产品"><el-select v-model="form.productCode" filterable style="width:100%" placeholder="搜索已同步的MDM产品"><el-option v-for="item in products" :key="item.value" :label="item.label" :value="item.value"/></el-select></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="目标类型"><el-select v-model="form.targetType" style="width:100%"><el-option label="物料清单" value="BOM"/><el-option label="工艺路线" value="ROUTING"/></el-select></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="目标编码（选填）"><el-input v-model="form.bomCode"/></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="目标版本"><el-input v-model="form.targetVersion" placeholder="例如 V1.1"/></el-form-item></el-col>
@@ -321,7 +327,7 @@ onMounted(() => { void load() })
         <el-col :span="12"><el-form-item label="影响类型"><el-select v-model="impactForm.impactType" style="width:100%"><el-option label="物料清单" value="BOM"/><el-option label="工艺路线" value="ROUTING"/><el-option label="文档" value="DOCUMENT"/><el-option label="产品" value="PRODUCT"/></el-select></el-form-item></el-col>
         <el-col :span="12"><el-form-item label="受影响对象编码"><el-input v-model="impactForm.objectCode"/></el-form-item></el-col>
         <el-col :span="24"><el-form-item label="影响说明（选填）"><el-input v-model="impactForm.impactDesc" type="textarea"/></el-form-item></el-col>
-        <el-col :span="12"><el-form-item label="风险等级（选填）"><el-select v-model="impactForm.riskLevel" style="width:100%"><el-option v-for="o in ['LOW', 'MEDIUM', 'HIGH']" :key="o" :label="zh(o)" :value="o"/></el-select></el-form-item></el-col>
+        <el-col :span="12"><el-form-item label="风险等级（选填）"><el-select v-model="impactForm.riskLevel" style="width:100%"><el-option v-for="o in ['LOW', 'MEDIUM', 'HIGH']" :key="o" :label="plmLabel(o)" :value="o"/></el-select></el-form-item></el-col>
         <el-col :span="12"><el-form-item label="成本影响估算（选填）"><el-input-number v-model="impactForm.costImpact" :min="0" :precision="2"/></el-form-item></el-col>
         <el-col :span="12"><el-form-item label="进度影响天数（选填）"><el-input-number v-model="impactForm.scheduleImpactDays" :min="0" :precision="0"/></el-form-item></el-col>
         <el-col :span="12"><el-form-item label="责任人账号（选填）"><el-input v-model="impactForm.ownerUser"/></el-form-item></el-col>
@@ -333,11 +339,18 @@ onMounted(() => { void load() })
       <el-descriptions v-if="detailRow" :column="1" border>
         <el-descriptions-item v-for="(value, key) in detailRow" :key="key" :label="displayKey(String(key))">{{ displayValue(String(key), value) }}</el-descriptions-item>
       </el-descriptions>
-      <template v-if="tab === 'ecrs' && impacts.length"><h3>影响分析</h3><el-table :data="impacts" border><el-table-column prop="impact_type" label="影响类型"><template #default="{ row }">{{ zh(row.impact_type) }}</template></el-table-column><el-table-column prop="object_code" label="受影响对象编码"/><el-table-column prop="impact_desc" label="影响说明"/><el-table-column prop="risk_level" label="风险等级"><template #default="{ row }">{{ zh(row.risk_level) }}</template></el-table-column><el-table-column prop="cost_impact" label="成本影响估算"/><el-table-column prop="schedule_impact_days" label="进度影响天数"/></el-table></template>
+      <template v-if="tab === 'ecrs' && impacts.length"><h3>影响分析</h3><el-table :data="impacts" border><el-table-column prop="impact_type" label="影响类型"><template #default="{ row }">{{ plmLabel(row.impact_type) }}</template></el-table-column><el-table-column prop="object_code" label="受影响对象编码"/><el-table-column prop="impact_desc" label="影响说明"/><el-table-column prop="risk_level" label="风险等级"><template #default="{ row }">{{ plmLabel(row.risk_level) }}</template></el-table-column><el-table-column prop="cost_impact" label="成本影响估算"/><el-table-column prop="schedule_impact_days" label="进度影响天数"/></el-table></template>
     </el-drawer>
   </section>
 </template>
 
 <style scoped>
-.page{max-width:1480px;margin:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:17px}.head h1{margin:6px 0}.head span{color:#3775d6;font-size:10px}.head p{color:#8291a4;font-size:12px}.toolbar{display:flex;gap:8px;margin-bottom:14px}.toolbar .el-input{width:280px}
+.page{max-width:var(--vyre-layout-content-max);margin:0 auto;color:var(--vyre-content-primary)}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--vyre-space-4);margin-bottom:var(--vyre-space-4)}
+.head h1{margin:var(--vyre-space-2) 0;color:var(--workspace-ink);font-size:var(--vyre-font-size-xl)}
+.head span{color:var(--workspace-accent);font-size:var(--vyre-font-size-xs);font-weight:var(--vyre-font-weight-semibold);letter-spacing:.08em}
+.head p{color:var(--workspace-muted);font-size:var(--vyre-font-size-sm)}
+.toolbar{display:flex;gap:var(--vyre-space-2);margin-bottom:var(--vyre-space-3)}
+.toolbar .el-input{width:min(100%,calc(var(--vyre-space-64) * 6))}
+@media (max-width:720px){.head{align-items:flex-start;flex-direction:column}}
 </style>

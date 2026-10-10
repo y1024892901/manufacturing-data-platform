@@ -28,6 +28,7 @@ public class EquipmentUsageService {
     private final EquipmentUsageRepository repository;
     private final EnergyMeterRepository meterRepository;
     private final EnergyAlertService alertService;
+    private final EnergyEquipmentDirectory equipmentDirectory;
 
     public List<EquipmentUsage> list() { return repository.findAll(Sort.by(Sort.Direction.DESC, "id")); }
     public EquipmentUsage get(Long id) { return repository.findById(id).orElseThrow(() -> BizException.notFound("设备能耗记录", id)); }
@@ -97,6 +98,7 @@ public class EquipmentUsageService {
         if (blank(usage.getEquipmentCode()) || usage.getEnergyValue() == null) {
             throw BizException.of(ErrorCode.PARAM_INVALID, "请填写设备编码和能耗量");
         }
+        usage.setEquipmentCode(equipmentDirectory.requireUsable(usage.getEquipmentCode()).equipmentCode());
         if (!ENERGY_TYPES.contains(usage.getEnergyType())) throw BizException.badState("能源类型无效");
         if (!UNIT_CODES.contains(usage.getUnitCode())) throw BizException.badState("计量单位无效");
         nonNegative(usage.getEnergyValue(), "能耗量");

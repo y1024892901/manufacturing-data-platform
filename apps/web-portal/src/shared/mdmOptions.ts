@@ -53,6 +53,30 @@ export async function loadMdmUnits(): Promise<MdmUnitOption[]> {
   }).filter(option => option.value)
 }
 
+export async function loadMdmSuppliers(): Promise<MdmOption[]> {
+  const response = await http.get('/mdm/options/suppliers')
+  return responseRows(response).map(row => {
+    const code = String(row.supplier_code ?? row.supplierCode ?? '')
+    const name = String(row.supplier_name ?? row.supplierName ?? '')
+    const level = row.supplier_level ?? row.supplierLevel
+    const category = row.supply_category ?? row.supplyCategory
+    const details = [level ? `${level}级` : '', category || ''].filter(Boolean).join(' · ')
+    return { label: `${name || code}（${code}）${details ? ` · ${details}` : ''}`, value: code }
+  }).filter(option => option.value)
+}
+
+export async function loadMdmWarehouses(): Promise<MdmOption[]> {
+  const response = await http.get('/mdm/options/warehouses')
+  return responseRows(response).map(row => {
+    const code = String(row.warehouse_code ?? row.warehouseCode ?? '')
+    const name = String(row.warehouse_name ?? row.warehouseName ?? '')
+    const factory = row.factory_code ?? row.factoryCode
+    const type = row.warehouse_type ?? row.warehouseType
+    const details = [factory ? `工厂 ${factory}` : '', type || ''].filter(Boolean).join(' · ')
+    return { label: `${name || code}（${code}）${details ? ` · ${details}` : ''}`, value: code }
+  }).filter(option => option.value)
+}
+
 export async function loadMdmCategories(): Promise<MdmOption[]> {
   const response = await http.get('/mdm/options/categories')
   return responseRows(response).map(row => {

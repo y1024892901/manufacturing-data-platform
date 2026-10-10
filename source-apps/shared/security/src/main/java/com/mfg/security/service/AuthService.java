@@ -109,7 +109,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public List<DemoAccount> demoAccounts() {
         Map<String, String> deptNames = deptNameMap();
-        return userRepository.findByDemoAccountTrueAndEnabledTrueOrderByIdAsc().stream()
+        return userRepository.findByDemoAccountTrueAndEnabledTrueAndLockedFalseOrderByIdAsc().stream()
                 .map(u -> new DemoAccount(
                         u.getUsername(),
                         u.getRealName(),

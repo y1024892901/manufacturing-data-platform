@@ -4,6 +4,7 @@ import com.mfg.common.api.ErrorCode;
 import com.mfg.common.exception.BizException;
 import com.mfg.security.config.CurrentUser;
 import com.mfg.security.principal.LoginUser;
+import com.mfg.security.entity.SysUser;
 import com.mfg.workflow.callback.ApprovalCallback;
 import com.mfg.workflow.dto.StartApprovalRequest;
 import com.mfg.workflow.entity.*;
@@ -17,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -96,6 +99,8 @@ public class ApprovalEngine {
                     "审批流程【" + def.getDefName() + "】未定义任何节点");
         }
 
+        List<String> selectedApprovers = validateSelectedApprovers(req, def, me);
+
         // 幂等：同一单据不允许重复提交
         instanceRepo.findFirstByBizTypeAndBizIdAndStatusOrderByIdDesc(
                         req.bizType(), req.bizId(), "RUNNING")
@@ -122,7 +127,11 @@ public class ApprovalEngine {
         instance.setCurrentNodeSeq(first.getNodeSeq());
         instanceRepo.save(instance);
 
-        createTask(instance, first);
+        if (selectedApprovers.isEmpty()) {
+            createTask(instance, first);
+        } else {
+            createSelectedTasks(instance, def, selectedApprovers);
+        }
 
         logAction(instance.getId(), null, null, "SUBMIT", me,
                 "提交审批：" + req.bizTitle(), null, "RUNNING");
@@ -180,8 +189,27 @@ public class ApprovalEngine {
             return instance;
         }
 
-        // 找下一节点
-        WfNode next = def.nextNode(task.getNodeSeq());
+        // 指定人员的流程在提交时已保存全部级次，逐级激活待办。
+        List<WfTask> selectedRoute = taskRepo.findByInstanceIdOrderByNodeSeqAsc(instance.getId()).stream()
+                .filter(item -> "SELECTED_ROUTE".equals(item.getSignMode()))
+                .toList();
+        if (!selectedRoute.isEmpty()) {
+            Optional<WfTask> following = selectedRoute.stream()
+                    .filter(item -> item.getNodeSeq() > task.getNodeSeq() && "WAITING".equals(item.getTaskStatus()))
+                    .findFirst();
+            if (following.isPresent()) {
+                WfTask nextTask = following.get();
+                nextTask.setTaskStatus("PENDING");
+                taskRepo.save(nextTask);
+                instance.setCurrentNodeSeq(nextTask.getNodeSeq());
+                instanceRepo.save(instance);
+                invokeCallback(instance, cb -> cb.onNodeEntered(instance, nextTask.getNodeName()));
+                return instance;
+            }
+        }
+
+        // 兼容原有按角色流转的流程。
+        WfNode next = selectedRoute.isEmpty() ? def.nextNode(task.getNodeSeq()) : null;
 
         if (next == null) {
             // 已是最后节点 → 流程通过
@@ -250,7 +278,8 @@ public class ApprovalEngine {
                 me.getRealName(), task.getNodeName(), instance.getInstanceNo(),
                 currentNode != null && currentNode.rejectToSubmitter() ? "退回提交人" : "退上一节点");
 
-        if (currentNode != null && !currentNode.rejectToSubmitter()) {
+        if (currentNode != null && !currentNode.rejectToSubmitter()
+                && !"SELECTED_ROUTE".equals(task.getSignMode())) {
             // 退上一节点：流程继续
             Optional<WfNode> prev = def.getNodes().stream()
                     .filter(n -> n.getNodeSeq() < task.getNodeSeq())
@@ -274,7 +303,10 @@ public class ApprovalEngine {
             }
         }
 
-        // 退回提交人：流程结束
+        // 退回提交人：流程结束，后续预排的指定审批任务同时作废。
+        taskRepo.findByInstanceIdOrderByNodeSeqAsc(instance.getId()).stream()
+                .filter(t -> "WAITING".equals(t.getTaskStatus()))
+                .forEach(t -> { t.setTaskStatus("CANCELED"); taskRepo.save(t); });
         instance.finish("REJECTED");
         instanceRepo.save(instance);
 
@@ -304,7 +336,7 @@ public class ApprovalEngine {
 
         // 作废所有待办
         taskRepo.findByInstanceIdOrderByNodeSeqAsc(instanceId).stream()
-                .filter(WfTask::isPending)
+                .filter(t -> t.isPending() || "WAITING".equals(t.getTaskStatus()))
                 .forEach(t -> {
                     t.setTaskStatus("CANCELED");
                     t.setOpinion("提交人撤回");
@@ -351,8 +383,8 @@ public class ApprovalEngine {
                 me.getRoleCodes(), me.getUsername(), READ_ONLY_MDM_BIZ_TYPES);
     }
 
-    @Transactional public WfTask transfer(Long taskId,String username,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);WfInstance instance=getInstance(source.getInstanceId());rejectReadOnlyMdmApproval(instance.getBizType());userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("转交用户",username));source.complete("TRANSFERRED",reason,me.getUsername());taskRepo.save(source);WfTask target=new WfTask();target.setInstanceId(source.getInstanceId());target.setNodeSeq(source.getNodeSeq());target.setNodeName(source.getNodeName()+"（转交）");target.setApproverRole(source.getApproverRole());target.setAssignedUser(username);target.setSourceTaskId(source.getId());taskRepo.save(target);logAction(instance.getId(),target.getId(),target.getNodeSeq(),"TRANSFER",me,"转交给"+username+"："+reason,"PENDING","PENDING");return target;}
-    @Transactional public WfTask addSign(Long taskId,String username,String mode,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);rejectReadOnlyMdmApproval(getInstance(source.getInstanceId()).getBizType());userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("加签用户",username));source.setTaskStatus("WAITING");taskRepo.save(source);WfTask sign=new WfTask();sign.setInstanceId(source.getInstanceId());sign.setNodeSeq(source.getNodeSeq());sign.setNodeName(source.getNodeName()+"（加签）");sign.setApproverRole(source.getApproverRole());sign.setAssignedUser(username);sign.setSourceTaskId(source.getId());sign.setSignMode("AFTER".equalsIgnoreCase(mode)?"AFTER":"BEFORE");taskRepo.save(sign);logAction(source.getInstanceId(),sign.getId(),sign.getNodeSeq(),"ADD_SIGN",me,"加签给"+username+"："+reason,"PENDING","WAITING");return sign;}
+    @Transactional public WfTask transfer(Long taskId,String username,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);WfInstance instance=getInstance(source.getInstanceId());rejectReadOnlyMdmApproval(instance.getBizType());requireActiveApprover(username);source.complete("TRANSFERRED",reason,me.getUsername());taskRepo.save(source);WfTask target=new WfTask();target.setInstanceId(source.getInstanceId());target.setNodeSeq(source.getNodeSeq());target.setNodeName(source.getNodeName()+"（转交）");target.setApproverRole(source.getApproverRole());target.setAssignedUser(username);target.setSourceTaskId(source.getId());taskRepo.save(target);logAction(instance.getId(),target.getId(),target.getNodeSeq(),"TRANSFER",me,"转交给"+username+"："+reason,"PENDING","PENDING");return target;}
+    @Transactional public WfTask addSign(Long taskId,String username,String mode,String reason){LoginUser me=CurrentUser.get();WfTask source=loadMyPendingTask(taskId,me);rejectReadOnlyMdmApproval(getInstance(source.getInstanceId()).getBizType());requireActiveApprover(username);source.setTaskStatus("WAITING");taskRepo.save(source);WfTask sign=new WfTask();sign.setInstanceId(source.getInstanceId());sign.setNodeSeq(source.getNodeSeq());sign.setNodeName(source.getNodeName()+"（加签）");sign.setApproverRole(source.getApproverRole());sign.setAssignedUser(username);sign.setSourceTaskId(source.getId());sign.setSignMode("AFTER".equalsIgnoreCase(mode)?"AFTER":"BEFORE");taskRepo.save(sign);logAction(source.getInstanceId(),sign.getId(),sign.getNodeSeq(),"ADD_SIGN",me,"加签给"+username+"："+reason,"PENDING","WAITING");return sign;}
     @Transactional public void copyTo(Long instanceId,List<String> users,String reason){LoginUser me=CurrentUser.get();WfInstance instance=getInstance(instanceId);rejectReadOnlyMdmApproval(instance.getBizType());for(String username:users){userRepo.findByUsernameAndDeletedFalse(username).orElseThrow(()->BizException.notFound("抄送用户",username));if(ccRepo.findByInstanceIdAndUsername(instanceId,username).isEmpty()){WfCc cc=new WfCc();cc.setInstanceId(instanceId);cc.setUsername(username);cc.setCreatedBy(me.getUsername());ccRepo.save(cc);}}logAction(instanceId,null,null,"CC",me,reason,"RUNNING","RUNNING");}
 
     private void rejectReadOnlyMdmApproval(String bizType) {
@@ -401,6 +433,65 @@ public class ApprovalEngine {
         task.setApproverRole(node.getApproverRole());
         task.setTaskStatus("PENDING");
         taskRepo.save(task);
+    }
+
+    private SysUser requireActiveApprover(String username) {
+        SysUser user = userRepo.findByUsernameAndDeletedFalse(username)
+                .orElseThrow(() -> BizException.notFound("审批人", username));
+        if (!Boolean.TRUE.equals(user.getEnabled()) || Boolean.TRUE.equals(user.getLocked()) ||
+                !(user.roleCodes().contains("ADMIN") || user.getRoles().stream()
+                        .anyMatch(role -> role.permissionCodes().contains("WF:TASK:APPROVE")))) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, "所选用户没有审批权限或账号已停用");
+        }
+        return user;
+    }
+
+    private List<String> validateSelectedApprovers(StartApprovalRequest req, WfDefinition def, LoginUser submitter) {
+        if (req.approvers() == null || req.approvers().isEmpty()) return List.of();
+        if (!Set.of("QUOTATION", "QUOTATION_RISK").contains(req.bizType())) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, "当前业务不支持指定审批人");
+        }
+        List<String> usernames = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        if (req.approvers().size() < def.getNodes().size() || req.approvers().size() > 8) {
+            throw BizException.of(ErrorCode.PARAM_INVALID, "请选择全部必需审批人，审批级数最多为 8 级");
+        }
+        for (int index = 0; index < req.approvers().size(); index++) {
+            String username = req.approvers().get(index) == null ? "" : req.approvers().get(index).trim();
+            if (username.isEmpty() || !seen.add(username) || username.equals(submitter.getUsername())) {
+                throw BizException.of(ErrorCode.PARAM_INVALID, "审批人不能为空、重复或与发起人相同");
+            }
+            SysUser user = requireActiveApprover(username);
+            if (index < def.getNodes().size()) {
+                String requiredRole = normalizeApproverRole(def.getNodes().get(index).getApproverRole());
+                if (!user.roleCodes().contains("ADMIN") && !user.roleCodes().contains(requiredRole)) {
+                    throw BizException.of(ErrorCode.PARAM_INVALID, "第 " + (index + 1) + " 级审批人需要【" + def.getNodes().get(index).getNodeName() + "】角色");
+                }
+            }
+            usernames.add(username);
+        }
+        return usernames;
+    }
+
+    private String normalizeApproverRole(String role) {
+        return "FINANCE_SUPERVISOR".equals(role) ? "FIN_SUPERVISOR" : role;
+    }
+
+    private void createSelectedTasks(WfInstance instance, WfDefinition definition, List<String> usernames) {
+        int requiredCount = definition.getNodes().size();
+        int lastSequence = definition.lastNodeSeq();
+        for (int index = 0; index < usernames.size(); index++) {
+            WfNode node = index < requiredCount ? definition.getNodes().get(index) : null;
+            WfTask task = new WfTask();
+            task.setInstanceId(instance.getId());
+            task.setNodeSeq(node == null ? lastSequence + (index - requiredCount + 1) * 10 : node.getNodeSeq());
+            task.setNodeName(node == null ? "附加审批第" + (index - requiredCount + 1) + "级" : node.getNodeName());
+            task.setApproverRole(node == null ? "WF_APPROVER" : normalizeApproverRole(node.getApproverRole()));
+            task.setAssignedUser(usernames.get(index));
+            task.setSignMode("SELECTED_ROUTE");
+            task.setTaskStatus(index == 0 ? "PENDING" : "WAITING");
+            taskRepo.save(task);
+        }
     }
 
     /**
